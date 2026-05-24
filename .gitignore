@@ -1,0 +1,19 @@
+﻿# Python
+__pycache__/
+*.pyc
+.venv/
+*.egg-info/
+dist/
+build/
+
+# CAD output (generated)
+*.dxf
+*.pdf
+*.svg
+*.plt
+
+# Temp files
+_*.py
+_*.txt
+*.b64
+*.p64
