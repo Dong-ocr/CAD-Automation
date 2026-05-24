@@ -1,0 +1,65 @@
+﻿
+=======================================================
+  1. 模块导入
+=======================================================
+  [PASS] cad_toolbox.CADProject import
+  [PASS] library.BlockLibrary import
+  [PASS] hatch_lib.HatchFiller import
+  [PASS] dim_lib.DimLib import
+  [PASS] frame_lib.FrameLib import
+  [PASS] frame_lib.FRAME_SIZES defined
+  [PASS] render.DXFRenderer import
+
+=======================================================
+  2. cad_toolbox 基础绘图
+=======================================================
+  CADProject: 'Test' initialized
+  [PASS] circle_array returns 25 circles
+  Saved: C:\Users\王东浩\Documents\CAD自动化制图\_test_output.dxf
+  Entities: 172
+  [PASS] save() returns path
+  [PASS] DXF file exists
+  [PASS] _last_dxf set
+  SVG: C:\Users\王东浩\Documents\CAD自动化制图\_test_output.svg
+  [PASS] SVG export works
+  PDF: C:\Users\王东浩\Documents\CAD自动化制图\_test_output.pdf
+  [PASS] PDF export works
+  PLT:  C:\Users\王东浩\Documents\CAD自动化制图\_test_output.plt
+  [PASS] PLT export works
+  [PASS] PLT has HPGL commands
+
+=======================================================
+  3. 图框尺寸
+=======================================================
+  CADProject: 'FrameTest' initialized
+  [PASS] A3 frame
+  [PASS] FRAME_SIZES has A3/A2/A1
+
+=======================================================
+  4. run.py & batch
+=======================================================
+  CADProject: 'TestShaft' initialized
+  Saved: C:\Users\王东浩\Documents\CAD自动化制图\TestShaft.dxf
+  Entities: 85
+  [PASS] gen_shaft_dxf returns path
+  [PASS] gen_shaft_dxf filename correct
+
+=======================================================
+  5. 清理测试文件
+=======================================================
+  [PASS] Cleaned: _test_output.dxf
+  [PASS] Cleaned: _test_output.svg
+  [PASS] Cleaned: _test_output.pdf
+  [PASS] Cleaned: _test_output.plt
+  [PASS] Cleaned: TestShaft.dxf
+
+=======================================================
+  TEST RESULTS
+=======================================================
+  PASS: 24
+  FAIL: 0
+  Total: 24
+
+  All tests passed!
+
+  System is ready for production use.

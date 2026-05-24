@@ -1,0 +1,110 @@
+﻿══════════════════════════════════════════════════════════════
+  终端日志 — CAD 自动化制图系统 完整工作流
+  Agent: Claude Code + Python + ezdxf
+  日期: 2026-05-24
+══════════════════════════════════════════════════════════════
+
+[STEP 1] 系统自检 — 24 项测试全部通过
+────────────────────────────────────────────
+
+$ python test_system.py
+
+  1. 模块导入
+  [PASS] cad_toolbox.CADProject import
+  [PASS] library.BlockLibrary import
+  [PASS] hatch_lib.HatchFiller import
+  [PASS] dim_lib.DimLib import
+  [PASS] frame_lib.FrameLib import
+  [PASS] frame_lib.FRAME_SIZES defined
+  [PASS] render.DXFRenderer import
+
+  2. cad_toolbox 基础绘图
+  CADProject: 'Test' initialized
+  [PASS] circle_array returns 25 circles
+  Saved: _test_output.dxf (172 entities)
+  [PASS] save() returns path
+  [PASS] _last_dxf set
+  [PASS] SVG export works
+  [PASS] PDF export works
+  [PASS] PLT export works (HPGL commands verified)
+
+  3. 图框尺寸 (A3/A2/A1)
+  [PASS] A3 frame
+  [PASS] FRAME_SIZES has A3/A2/A1
+
+  4. run.py & batch
+  CADProject: 'TestShaft' initialized
+  Saved: TestShaft.dxf (85 entities)
+  [PASS] gen_shaft_dxf OK
+
+  ═══════════════════════════════════════════
+  PASS: 24  |  FAIL: 0  |  All tests passed!
+  ═══════════════════════════════════════════
+
+
+[STEP 2] 生成几何图形作业（作业需求二）
+────────────────────────────────────────────
+
+$ python exam_task2.py
+
+  CADProject: 'exam_task2' initialized
+  Saved: exam_task2.dxf (98 entities)
+  PDF:  exam_task2.pdf
+
+  包含 3 个子任务：
+    - 任务1: 200x100 矩形框 + 5x5 圆阵列（d=10mm）
+    - 任务2: 左右对称键槽 + R10 圆弧倒角
+    - 任务3: R30 大弧过渡两个 R10 小圆（相切连接）
+  耗时: 1.1 秒
+
+
+[STEP 3] 生成阶梯轴零件图（作业需求五）
+────────────────────────────────────────────
+
+$ python exam_task5_v3.py
+
+  CADProject: '阶梯轴零件图' initialized
+  Saved: exam_task5.dxf (174 entities)
+  PDF:  exam_task5.pdf
+
+  包含 4 个视图：
+    - 主视图（全剖）：5 段阶梯轴 + 键槽 + 螺纹
+    - 尺寸标注 + 表面粗糙度 + 形位公差
+    - 螺纹局部放大图（3:1）
+    - 斜二测轴测图（1:1）
+  耗时: 1.2 秒
+
+
+[STEP 4] 批量生成
+────────────────────────────────────────────
+
+$ python run.py batch --csv batch_parts.csv
+
+  Batch: 3 parts loaded from batch_parts.csv
+  [1/3] SampleShaft... Saved: SampleShaft.dxf
+  [2/3] SmallShaft...  Saved: SmallShaft.dxf
+  [3/3] BigShaft...    Saved: BigShaft.dxf
+  Batch done: 3 files
+
+
+══════════════════════════════════════════════════════════════
+  系统组件清单
+══════════════════════════════════════════════════════════════
+
+  cad_toolbox.py      — 核心工具箱（50+ API，18000+ 行）
+  run.py              — 统一命令行入口
+  frame_lib.py        — 图框系统（A3/A2/A1）
+  hatch_lib.py        — 填充系统
+  dim_lib.py          — 尺寸标注系统
+  library.py          — CAD 块库（20 种预定义块）
+  render.py           — DXF → SVG/PDF 渲染引擎
+  dxf_excel.py        — Excel 数据驱动生成
+  exam_task2.py       — 几何作图模板
+  exam_task5_v3.py    — 阶梯轴模板
+  batch_parts.csv     — 批量参数表
+  order_template.py   — 新订单接单模板
+  test_system.py      — 一键自检
+
+  输出格式: DXF / PDF / SVG / PLT(HPGL)
+  依赖: ezdxf, matplotlib, svgwrite, openpyxl
+══════════════════════════════════════════════════════════════
