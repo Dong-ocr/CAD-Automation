@@ -50,3 +50,7 @@ scripts/_*.js
 # OS
 .DS_Store
 Thumbs.db
+
+scripts/_dxf_example/
+scripts/_dxf_viewer_src/
+scripts/patch_*.py
