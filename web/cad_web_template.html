@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>AI CAD 设计助手</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#f0f2f5;color:#333}
+.header{background:linear-gradient(135deg,#1a1a2e,#16213e);color:#fff;padding:30px 20px;text-align:center}
+.header h1{font-size:28px}.container{max-width:800px;margin:0 auto;padding:20px}
+.card{background:#fff;border-radius:12px;padding:24px;margin-bottom:16px;box-shadow:0 2px 8px rgba(0,0,0,.08)}
+textarea{width:100%;padding:12px;border:1px solid #d1d5db;border-radius:8px;font-size:14px;min-height:100px;outline:none}
+.btn{display:inline-flex;padding:10px 24px;border-radius:8px;font-size:14px;font-weight:600;border:none;cursor:pointer}
+.btn-primary{background:#3b82f6;color:#fff;width:100%}.btn-primary:disabled{opacity:.5;cursor:not-allowed}
+.status{display:none;padding:12px;border-radius:8px;margin-top:12px}
+.status.loading{display:block;background:#fef3c7;color:#92400e}
+.status.success{display:block;background:#d1fae5;color:#065f46}
+.status.error{display:block;background:#fee2e2;color:#991b1b}
+.preview-wrap{display:none;margin-top:12px}.preview-wrap.show{display:block}
+.preview-wrap img{max-width:100%;border-radius:8px}
+.examples{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.examples button{padding:6px 12px;background:#f3f4f6;border:1px solid #e5e7eb;border-radius:6px;font-size:13px;cursor:pointer}
+</style>
+</head>
+<body>
+<div class="header"><h1>🏷️ AI CAD 设计助手</h1><p>说出需求，AI 自动生成 CAD 图纸</p></div>
+<div class="container">
+<div class="card"><h2>📝 描述设计需求</h2>
+<textarea id="prompt" placeholder="例如：两室一厅 95平米 现代简约风格..."></textarea>
+<div class="examples">
+<button onclick="setPrompt('两室一厅 95平米 现代风格')">两室一厅 95m²</button>
+<button onclick="setPrompt('三室两厅 120平米 新中式风格')">三室两厅 120m²</button>
+<button onclick="setPrompt('一室一厅 50平米 北欧风格')">一室一厅 50m²</button>
+</div></div>
+<button class="btn btn-primary" id="submitBtn" onclick="submitDesign()">🚀 开始设计</button>
+<div class="status" id="status"></div>
+<div class="preview-wrap" id="previewWrap">
+<div class="card"><h2>🎨 设计预览</h2>
+<img id="previewImg" src="">
+<div id="downloadBar" style="margin-top:12px"></div>
+</div></div></div>
+<script>
+function setPrompt(t){document.getElementById("prompt").value=t}
+async function submitDesign(){
+var p=document.getElementById("prompt").value.trim()
+if(!p){alert("请输入设计需求");return}
+var btn=document.getElementById("submitBtn");btn.disabled=true
+var s=document.getElementById("status");s.className="status loading";s.innerHTML="⏳ AI 正在分析需求..."
+var pw=document.getElementById("previewWrap");pw.classList.remove("show")
+try{
+var r=await fetch("/api/design",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({prompt:p})})
+var d=await r.json()
+if(d.s){
+s.className="status success";s.innerHTML="✅ 设计完成！"
+document.getElementById("previewImg").src=d.preview
+var db=document.getElementById("downloadBar");db.innerHTML=""
+if(d.params){var info=document.createElement("p");info.style.cssText="color:#6b7280;font-size:13px;margin-top:8px";info.textContent="风格："+(d.params.style||"")+" | 面积："+(d.params.total_area||"")+"m² | 房间数："+(d.params.rooms?d.params.rooms.length:0);db.appendChild(info)}
+pw.classList.add("show")
+}else{s.className="status error";s.innerHTML="❌ "+d.e}
+}catch(e){s.className="status error";s.innerHTML="❌ 请求失败"}
+finally{btn.disabled=false}}
+</script>
+</body>
+</html>

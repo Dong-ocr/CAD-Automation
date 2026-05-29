@@ -1,0 +1,9 @@
+Traceback (most recent call last):
+  File "E:\CAD自动化制图\server.py", line 135, in <module>
+    s=TCPServer(('',p),H)
+      ^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\王东浩\AppData\Local\Programs\Python\Python312\Lib\socketserver.py", line 457, in __init__
+    self.server_bind()
+  File "C:\Users\王东浩\AppData\Local\Programs\Python\Python312\Lib\socketserver.py", line 478, in server_bind
+    self.socket.bind(self.server_address)
+OSError: [WinError 10048] 通常每个套接字地址(协议/网络地址/端口)只允许使用一次。

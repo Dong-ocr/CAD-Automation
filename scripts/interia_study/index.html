@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="3D Interior Design Preview Tool for furniture brands and designers. Visualize, customize, and arrange furniture in realistic room environments.">
+  <title>INTERIA — 3D Interior Design Preview</title>
+  <link rel="stylesheet" href="styles.css">
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.184.0/build/three.module.js",
+      "three/examples/": "https://cdn.jsdelivr.net/npm/three@0.184.0/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+<body>
+
+<!-- Loading Screen -->
+<div class="loading-screen" id="loader">
+  <div class="loading-spinner"></div>
+  <p>Loading Environment</p>
+</div>
+
+<!-- Mobile Warning Screen -->
+<div class="mobile-warning" id="mobile-warning">
+  <div class="mobile-warning-content">
+    <div class="mobile-warning-icon">💻</div>
+    <div class="mobile-warning-logo">
+      <div class="logo-icon" style="width:48px;height:48px;font-size:18px;margin:0 auto 12px">IN</div>
+      <h1>INTERIA</h1>
+      <span>Design Studio</span>
+    </div>
+    <h2>Desktop Experience Required</h2>
+    <p>INTERIA is a 3D interior design tool that requires a larger screen for the best experience.</p>
+    <p>Please open this link on your <strong>laptop</strong> or <strong>desktop computer</strong> to access the full 3D editor with drag-and-drop furniture placement, material switching, and room customization.</p>
+    <div class="mobile-warning-features">
+      <div class="feature-pill">🖱️ Drag & Drop</div>
+      <div class="feature-pill">🔄 3D Orbit</div>
+      <div class="feature-pill">🎨 Materials</div>
+      <div class="feature-pill">📐 Precision</div>
+    </div>
+    <div class="mobile-warning-url">
+      <span>🔗</span>
+      <code id="current-url"></code>
+    </div>
+    <script>document.getElementById('current-url').textContent = window.location.href;</script>
+  </div>
+</div>
+
+<div id="app">
+
+  <!-- Top Bar -->
+  <header class="topbar">
+    <div class="topbar-brand">
+      <div class="logo-icon">IN</div>
+      <div>
+        <h1>Interia</h1>
+        <span>Design Studio</span>
+      </div>
+    </div>
+    <nav class="topbar-views">
+      <button class="view-btn active" data-view="perspective">3D View</button>
+      <button class="view-btn" data-view="top">Top View</button>
+      <button class="view-btn" data-view="front">Front View</button>
+    </nav>
+    <div class="topbar-actions">
+      <button class="action-btn" title="Undo">↩</button>
+      <button class="action-btn" title="Redo">↪</button>
+      <button class="action-btn" title="Grid Toggle">▦</button>
+      <button class="action-btn primary" title="Screenshot">📷</button>
+    </div>
+  </header>
+
+  <!-- Left Panel: Furniture Catalog -->
+  <aside class="panel-left">
+    <div class="panel-header">
+      <h2>Furniture</h2>
+      <div class="category-tabs">
+        <button class="cat-tab active" data-cat="all">All</button>
+        <button class="cat-tab" data-cat="sofas">🛋️ Sofas</button>
+        <button class="cat-tab" data-cat="tables">🪑 Tables</button>
+        <button class="cat-tab" data-cat="chairs">💺 Chairs</button>
+        <button class="cat-tab" data-cat="lighting">💡 Lighting</button>
+        <button class="cat-tab" data-cat="decor">🌿 Decor</button>
+      </div>
+    </div>
+    <div class="catalog-list" id="catalog-list"></div>
+  </aside>
+
+  <!-- 3D Viewport -->
+  <main class="viewport">
+    <div id="canvas-container"></div>
+    <div class="viewport-overlay" id="viewport-overlay"></div>
+    <div class="viewport-hint">
+      <span class="hint-icon">↻</span>
+      Drag background to orbit · Drag furniture to move · Click to select
+    </div>
+  </main>
+
+  <!-- Right Panel: Properties -->
+  <aside class="panel-right">
+    <div class="panel-header">
+      <h2>Properties</h2>
+    </div>
+
+    <!-- Empty state -->
+    <div class="empty-state" id="prop-empty">
+      <div class="empty-icon">🎯</div>
+      <p>Select furniture in the scene<br>or add from the catalog</p>
+    </div>
+
+    <!-- Properties content -->
+    <div class="properties-content" id="prop-content" style="display:none;">
+
+      <!-- Selected item header -->
+      <div class="prop-section">
+        <h3>Selected</h3>
+        <div style="font-size:14px;font-weight:600;color:var(--dark-gray)" id="prop-name">—</div>
+        <div style="font-size:10px;color:var(--light-gray);text-transform:uppercase;margin-top:2px" id="prop-cat">—</div>
+      </div>
+
+      <!-- Dimensions -->
+      <div class="prop-section">
+        <h3>Dimensions</h3>
+        <div class="dim-grid">
+          <div class="dim-item">
+            <div class="dim-label">Width</div>
+            <div class="dim-value"><span id="dim-w">—</span><span class="dim-unit"> cm</span></div>
+          </div>
+          <div class="dim-item">
+            <div class="dim-label">Depth</div>
+            <div class="dim-value"><span id="dim-d">—</span><span class="dim-unit"> cm</span></div>
+          </div>
+          <div class="dim-item">
+            <div class="dim-label">Height</div>
+            <div class="dim-value"><span id="dim-h">—</span><span class="dim-unit"> cm</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Materials -->
+      <div class="prop-section">
+        <h3>Material</h3>
+        <div class="material-grid">
+          <div class="material-swatch active" data-color="#C4A882" data-name="Oak" style="background:linear-gradient(135deg,#C4A882,#B89B78)">
+            <span class="swatch-label">Oak</span>
+          </div>
+          <div class="material-swatch" data-color="#6B4E37" data-name="Walnut" style="background:linear-gradient(135deg,#6B4E37,#5A3F2B)">
+            <span class="swatch-label">Walnut</span>
+          </div>
+          <div class="material-swatch" data-color="#D4B896" data-name="Maple" style="background:linear-gradient(135deg,#D4B896,#C8A880)">
+            <span class="swatch-label">Maple</span>
+          </div>
+          <div class="material-swatch" data-color="#E8DFD5" data-name="Linen" style="background:linear-gradient(135deg,#E8DFD5,#DDD2C5)">
+            <span class="swatch-label">Linen</span>
+          </div>
+          <div class="material-swatch" data-color="#8B5E3C" data-name="Leather" style="background:linear-gradient(135deg,#8B5E3C,#7A5030)">
+            <span class="swatch-label">Leather</span>
+          </div>
+          <div class="material-swatch" data-color="#7B6B8A" data-name="Velvet" style="background:linear-gradient(135deg,#7B6B8A,#6A5A78)">
+            <span class="swatch-label">Velvet</span>
+          </div>
+          <div class="material-swatch" data-color="#A0A0A0" data-name="Concrete" style="background:linear-gradient(135deg,#A0A0A0,#909090)">
+            <span class="swatch-label">Concrete</span>
+          </div>
+          <div class="material-swatch" data-color="#E0D8D0" data-name="Marble" style="background:linear-gradient(135deg,#E0D8D0,#D0C8C0)">
+            <span class="swatch-label">Marble</span>
+          </div>
+          <div class="material-swatch" data-color="#F0EDE8" data-name="Cotton" style="background:linear-gradient(135deg,#F0EDE8,#E5E0D8)">
+            <span class="swatch-label">Cotton</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Accent Colors -->
+      <div class="prop-section">
+        <h3>Accent Color</h3>
+        <div class="color-options">
+          <div class="color-dot" data-color="#C67D5B" style="background:#C67D5B" title="Terracotta"></div>
+          <div class="color-dot" data-color="#8FA584" style="background:#8FA584" title="Sage"></div>
+          <div class="color-dot" data-color="#7B9DAF" style="background:#7B9DAF" title="Dusty Blue"></div>
+          <div class="color-dot" data-color="#D4A843" style="background:#D4A843" title="Mustard"></div>
+          <div class="color-dot" data-color="#B8A898" style="background:#B8A898" title="Taupe"></div>
+          <div class="color-dot" data-color="#2D2D2D" style="background:#2D2D2D" title="Charcoal"></div>
+          <div class="color-dot" data-color="#F5F0EB" style="background:#F5F0EB;border:1px solid #ddd" title="Ivory"></div>
+        </div>
+      </div>
+
+      <!-- Transform -->
+      <div class="prop-section">
+        <h3>Transform</h3>
+        <div class="transform-modes">
+          <button class="mode-btn active">Move</button>
+          <button class="mode-btn">Rotate</button>
+          <button class="mode-btn">Scale</button>
+        </div>
+        <div class="transform-row">
+          <label>Rotation</label>
+          <input type="range" id="rot-slider" min="0" max="360" value="0">
+          <span class="val-display" id="rot-val">0°</span>
+        </div>
+        <div class="transform-row">
+          <label>Scale</label>
+          <input type="range" id="scale-slider" min="50" max="150" value="100">
+          <span class="val-display" id="scale-val">100%</span>
+        </div>
+      </div>
+
+      <!-- Delete -->
+      <div class="prop-section">
+        <button class="btn-delete" id="btn-delete">🗑 Remove from Scene</button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Bottom Bar -->
+  <footer class="bottombar">
+    <div class="bottombar-left">
+      <span><span class="status-dot"></span>Ready</span>
+      <span>Room: 10m × 8m × 3.2m</span>
+      <span id="sel-item-info">No selection</span>
+    </div>
+    <div class="bottombar-right">
+      <div class="zoom-controls">
+        <button class="zoom-btn" id="zoom-out">−</button>
+        <span>100%</span>
+        <button class="zoom-btn" id="zoom-in">+</button>
+      </div>
+    </div>
+  </footer>
+
+</div>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>

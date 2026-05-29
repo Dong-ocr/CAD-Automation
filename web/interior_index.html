@@ -1,0 +1,494 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🏠 家装室内设计 3D 交互系统</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: "Microsoft YaHei", "PingFang SC", sans-serif; overflow: hidden; background: #1a1a2e; color: #fff; }
+
+#canvas-container { width: 100vw; height: 100vh; display: block; }
+
+/* 顶部工具栏 */
+#toolbar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  background: linear-gradient(135deg, rgba(26,26,46,0.95), rgba(22,33,62,0.95));
+  backdrop-filter: blur(12px); padding: 8px 20px;
+  display: flex; align-items: center; gap: 16px;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+  height: 52px;
+}
+#toolbar .logo { font-size: 18px; font-weight: 700; background: linear-gradient(135deg, #667eea, #764ba2); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+#toolbar .subtitle { font-size: 12px; color: rgba(255,255,255,0.5); }
+#toolbar .spacer { flex: 1; }
+.btn {
+  padding: 6px 16px; border: 1px solid rgba(255,255,255,0.2); border-radius: 6px;
+  background: rgba(255,255,255,0.08); color: #fff; cursor: pointer;
+  font-size: 13px; transition: all 0.2s; font-family: inherit;
+}
+.btn:hover { background: rgba(255,255,255,0.15); border-color: rgba(255,255,255,0.3); }
+.btn-primary { background: linear-gradient(135deg, #667eea, #764ba2); border: none; }
+.btn-primary:hover { opacity: 0.9; }
+
+/* 右侧信息面板 */
+#info-panel {
+  position: fixed; right: 16px; top: 68px; z-index: 100;
+  width: 280px; max-height: calc(100vh - 84px); overflow-y: auto;
+  background: rgba(26,26,46,0.92); backdrop-filter: blur(12px);
+  border: 1px solid rgba(255,255,255,0.1); border-radius: 12px;
+  padding: 16px; font-size: 13px; transition: transform 0.3s;
+}
+#info-panel.hidden { transform: translateX(300px); }
+#info-panel h3 { font-size: 14px; margin-bottom: 8px; color: #a78bfa; }
+#info-panel .stat { display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+#info-panel .stat .label { color: rgba(255,255,255,0.6); }
+#info-panel .stat .value { font-weight: 600; }
+#info-panel .toggle { cursor: pointer; position: absolute; top: 8px; right: 8px; color: rgba(255,255,255,0.4); font-size: 18px; }
+
+/* 房间列表 */
+.room-list { margin-top: 8px; }
+.room-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 8px; border-radius: 6px; cursor: pointer;
+  transition: background 0.2s; font-size: 12px;
+}
+.room-item:hover { background: rgba(255,255,255,0.08); }
+.room-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+
+/* 底部控制提示 */
+#hint {
+  position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 100;
+  background: rgba(0,0,0,0.6); backdrop-filter: blur(8px);
+  padding: 8px 20px; border-radius: 20px; font-size: 12px;
+  color: rgba(255,255,255,0.6); white-space: nowrap;
+}
+
+/* 加载动画 */
+#loading {
+  position: fixed; inset: 0; z-index: 9999;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  background: #1a1a2e; transition: opacity 0.6s;
+}
+#loading.hidden { opacity: 0; pointer-events: none; }
+.spinner { width: 48px; height: 48px; border: 3px solid rgba(255,255,255,0.1); border-top-color: #667eea; border-radius: 50%; animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+#loading p { margin-top: 16px; color: rgba(255,255,255,0.6); font-size: 14px; }
+
+/* 2D 缩略图覆盖 */
+#minimap {
+  position: fixed; bottom: 76px; left: 16px; z-index: 100;
+  width: 180px; height: 180px;
+  background: rgba(0,0,0,0.7); border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.1);
+  overflow: hidden; transition: opacity 0.3s;
+}
+#minimap.hidden { opacity: 0; pointer-events: none; }
+#minimap canvas { width: 100%; height: 100%; }
+
+/* 滚动条美化 */
+#info-panel::-webkit-scrollbar { width: 4px; }
+#info-panel::-webkit-scrollbar-track { background: transparent; }
+#info-panel::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<div id="loading">
+  <div class="spinner"></div>
+  <p>🏗️ 正在构建室内场景...</p>
+</div>
+
+<div id="toolbar">
+  <span class="logo">🏠 InteriorDesign 3D</span>
+  <span class="subtitle">家装室内设计交互系统</span>
+  <span class="spacer"></span>
+  <button class="btn" onclick="togglePanel()">📊 信息</button>
+  <button class="btn" onclick="resetCamera()">🎯 复位</button>
+  <button class="btn btn-primary" onclick="toggleWalkthrough()">🚶 漫游</button>
+</div>
+
+<div id="canvas-container"></div>
+
+<div id="info-panel">
+  <span class="toggle" onclick="togglePanel()">✕</span>
+  <h3>🏗️ 项目信息</h3>
+  <div class="stat"><span class="label">户型</span><span class="value" id="proj-name">两室一厅</span></div>
+  <div class="stat"><span class="label">面积</span><span class="value" id="proj-area">95 m²</span></div>
+  <div class="stat"><span class="label">房间</span><span class="value" id="proj-rooms">7</span></div>
+  <div class="stat"><span class="label">家具</span><span class="value" id="proj-furniture">15</span></div>
+  <div class="stat"><span class="label">墙壁</span><span class="value" id="proj-walls">12</span></div>
+  <h3 style="margin-top:12px">📋 房间列表</h3>
+  <div class="room-list" id="room-list"></div>
+</div>
+
+<div id="minimap" class="hidden"><canvas id="minimap-canvas"></canvas></div>
+
+<div id="hint">🖱 左键旋转 · 滚轮缩放 · 右键平移 · 点击家具查看信息</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "./lib/three.module.js",
+    "three/addons/": "./lib/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/OrbitControls.js";
+
+// ── 场景数据 ────────────────────────────────────────
+const SCENE_DATA = null; // 将通过 fetch 加载
+
+// 房间颜色方案
+const ROOM_COLORS = {
+  "客厅": 0x667eea, "餐厅": 0x764ba2, "主卧": 0xf093fb,
+  "次卧": 0x4facfe, "厨房": 0x43e97b, "卫生间": 0xfa709a,
+  "过道": 0xa8a8a8, "阳台": 0x84fab0, "储物间": 0xb8b8b8,
+};
+
+const FURNITURE_COLORS = {
+  "床": 0xD2B48C, "沙发": 0x8B4513, "桌子": 0xDEB887,
+  "椅子": 0x8B7355, "柜子": 0xB8860B, "电器": 0xC0C0C0,
+  "卫浴": 0xE8E8E8, "灯具": 0xFFD700, "装饰": 0x90EE90,
+};
+
+// ── Three.js 场景 ───────────────────────────────────
+const container = document.getElementById("canvas-container");
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x1a1a2e);
+scene.fog = new THREE.Fog(0x1a1a2e, 20000, 40000);
+
+const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 1, 50000);
+camera.position.set(12000, 8000, 12000);
+camera.lookAt(5000, 0, 5000);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(container.clientWidth, container.clientHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.2;
+container.appendChild(renderer.domElement);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.set(5000, 1000, 5000);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.maxPolarAngle = Math.PI / 2.1;
+controls.minDistance = 500;
+controls.maxDistance = 30000;
+controls.update();
+
+// ── 光照 ─────────────────────────────────────────────
+const ambientLight = new THREE.AmbientLight(0x404060, 0.6);
+scene.add(ambientLight);
+
+const hemisphereLight = new THREE.HemisphereLight(0x8888ff, 0x444422, 0.8);
+scene.add(hemisphereLight);
+
+const dirLight = new THREE.DirectionalLight(0xffeedd, 1.5);
+dirLight.position.set(10000, 15000, 5000);
+dirLight.castShadow = true;
+dirLight.shadow.mapSize.width = 2048;
+dirLight.shadow.mapSize.height = 2048;
+dirLight.shadow.camera.near = 100;
+dirLight.shadow.camera.far = 40000;
+dirLight.shadow.camera.left = -15000;
+dirLight.shadow.camera.right = 15000;
+dirLight.shadow.camera.top = 15000;
+dirLight.shadow.camera.bottom = -15000;
+scene.add(dirLight);
+
+const fillLight = new THREE.DirectionalLight(0x4488ff, 0.3);
+fillLight.position.set(-5000, 8000, -5000);
+scene.add(fillLight);
+
+// 地面网格辅助
+const gridHelper = new THREE.GridHelper(30000, 30, 0x667eea, 0x334488);
+gridHelper.position.y = -5;
+scene.add(gridHelper);
+
+// ── 建筑场景组 ─────────────────────────────────────
+const building = new THREE.Group();
+scene.add(building);
+
+// 材质缓存
+const wallMat = new THREE.MeshStandardMaterial({
+  color: 0xdddddd, roughness: 0.6, metalness: 0.1,
+});
+const wallMatExterior = new THREE.MeshStandardMaterial({
+  color: 0xcccccc, roughness: 0.7, metalness: 0.05,
+});
+
+function buildScene(data) {
+  // 清空
+  while(building.children.length) building.remove(building.children[0]);
+
+  // 1. 地板（每个房间不同颜色）
+  for (const room of data.rooms) {
+    const pts = room.corners.map(c => new THREE.Vector2(c.x, c.y));
+    const shape = new THREE.Shape(pts);
+    const color = ROOM_COLORS[room.type] || 0x888888;
+    const mat = new THREE.MeshStandardMaterial({
+      color, roughness: 0.8, metalness: 0.05,
+      transparent: true, opacity: 0.6,
+      side: THREE.DoubleSide,
+    });
+    const geo = new THREE.ShapeGeometry(shape);
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.rotation.x = -Math.PI / 2;
+    mesh.position.y = 2;
+    mesh.receiveShadow = true;
+    building.add(mesh);
+
+    // 房间名称标签 (Sprite)
+    const label = makeTextSprite(room.name + " " + room.area + "m²", color);
+    label.position.set(room.center.x, 150, room.center.y);
+    label.scale.set(1500, 400, 1);
+    building.add(label);
+  }
+
+  // 2. 墙壁
+  for (const w of data.walls) {
+    const dx = w.x2 - w.x1;
+    const dy = w.y2 - w.y1;
+    const length = Math.sqrt(dx*dx + dy*dy);
+    if (length < 1) continue;
+
+    const mat = w.type === "外墙" ? wallMatExterior : wallMat;
+    const geo = new THREE.BoxGeometry(length, w.height, w.thickness);
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+
+    const cx = (w.x1 + w.x2) / 2;
+    const cy = (w.y1 + w.y2) / 2;
+    mesh.position.set(cx, w.height / 2, cy);
+    const angle = Math.atan2(dy, dx);
+    mesh.rotation.y = -angle;
+    building.add(mesh);
+  }
+
+  // 3. 家具
+  for (const f of data.furniture) {
+    const color = FURNITURE_COLORS[f.category] || parseInt(f.color.replace("#",""), 16) || 0xcccccc;
+    const h = Math.max(f.h, 50);
+    const geo = new THREE.BoxGeometry(f.w, h, f.d);
+    const mat = new THREE.MeshStandardMaterial({
+      color, roughness: 0.4, metalness: 0.2,
+    });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    mesh.position.set(f.x, h / 2, f.y);
+    mesh.rotation.y = THREE.MathUtils.degToRad(f.rotation);
+
+    // 家具名称标签
+    const label = makeTextSprite(f.name, color);
+    label.position.set(f.x, h + 400, f.y);
+    label.scale.set(800, 200, 1);
+    building.add(label);
+
+    building.add(mesh);
+  }
+
+  // 4. 天花板 (简化 - 半透明)
+  const minX = Math.min(...data.rooms.flatMap(r => r.corners.map(c => c.x)));
+  const maxX = Math.max(...data.rooms.flatMap(r => r.corners.map(c => c.x)));
+  const minY = Math.min(...data.rooms.flatMap(r => r.corners.map(c => c.y)));
+  const maxY = Math.max(...data.rooms.flatMap(r => r.corners.map(c => c.y)));
+  const ceilMat = new THREE.MeshStandardMaterial({
+    color: 0xeeeeee, transparent: true, opacity: 0.15,
+    roughness: 0.9, side: THREE.DoubleSide,
+  });
+  const ceilGeo = new THREE.PlaneGeometry(maxX - minX + 2000, maxY - minY + 2000);
+  const ceilMesh = new THREE.Mesh(ceilGeo, ceilMat);
+  ceilMesh.rotation.x = -Math.PI / 2;
+  ceilMesh.position.set((minX+maxX)/2, 2800, (minY+maxY)/2);
+  building.add(ceilMesh);
+
+  // 更新信息面板
+  document.getElementById("proj-name").textContent = data.name;
+  document.getElementById("proj-area").textContent = data.rooms.reduce((s, r) => s + r.area, 0).toFixed(0) + " m²";
+  document.getElementById("proj-rooms").textContent = data.rooms.length;
+  document.getElementById("proj-furniture").textContent = data.furniture.length;
+  document.getElementById("proj-walls").textContent = data.walls.length;
+
+  // 房间列表
+  const roomList = document.getElementById("room-list");
+  roomList.innerHTML = "";
+  for (const room of data.rooms) {
+    const div = document.createElement("div");
+    div.className = "room-item";
+    const dot = document.createElement("span");
+    dot.className = "room-dot";
+    dot.style.background = "#" + (ROOM_COLORS[room.type] || 0x888888).toString(16).padStart(6, "0");
+    div.appendChild(dot);
+    div.appendChild(document.createTextNode(`${room.name}  ${room.area}m²`));
+    div.onclick = () => flyTo(room.center.x, room.center.y);
+    roomList.appendChild(div);
+  }
+
+  // 小地图
+  drawMiniMap(data);
+}
+
+// ── 文字精灵 ─────────────────────────────────────────
+function makeTextSprite(text, color = 0xffffff) {
+  const canvas = document.createElement("canvas");
+  canvas.width = 512;
+  canvas.height = 128;
+  const ctx = canvas.getContext("2d");
+  ctx.clearRect(0, 0, 512, 128);
+
+  // 背景
+  ctx.fillStyle = "rgba(0,0,0,0.6)";
+  ctx.beginPath();
+  ctx.roundRect(10, 10, 492, 108, 16);
+  ctx.fill();
+
+  // 文字
+  ctx.fillStyle = "#ffffff";
+  ctx.font = "bold 48px 'Microsoft YaHei', 'PingFang SC', sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(text, 256, 64);
+
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.needsUpdate = true;
+  const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false });
+  return new THREE.Sprite(mat);
+}
+
+// ── 小地图 ───────────────────────────────────────────
+function drawMiniMap(data) {
+  const mm = document.getElementById("minimap");
+  mm.classList.remove("hidden");
+  const canvas = document.getElementById("minimap-canvas");
+  const ctx = canvas.getContext("2d");
+  const W = 180, H = 180;
+  canvas.width = W; canvas.height = H;
+  ctx.clearRect(0, 0, W, H);
+
+  // 计算边界
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  for (const r of data.rooms) {
+    for (const c of r.corners) {
+      if (c.x < minX) minX = c.x;
+      if (c.x > maxX) maxX = c.x;
+      if (c.y < minY) minY = c.y;
+      if (c.y > maxY) maxY = c.y;
+    }
+  }
+  const rangeX = maxX - minX || 1;
+  const rangeY = maxY - minY || 1;
+  const scale = Math.min(W / rangeX, H / rangeY) * 0.85;
+  const ox = (W - rangeX * scale) / 2;
+  const oy = (H - rangeY * scale) / 2;
+  const tx = (x) => (x - minX) * scale + ox;
+  const ty = (y) => (maxY - y) * scale + oy;
+
+  // 画房间
+  for (const r of data.rooms) {
+    ctx.beginPath();
+    ctx.moveTo(tx(r.corners[0].x), ty(r.corners[0].y));
+    for (let i = 1; i < r.corners.length; i++) ctx.lineTo(tx(r.corners[i].x), ty(r.corners[i].y));
+    ctx.closePath();
+    const color = ROOM_COLORS[r.type] || 0x888888;
+    ctx.fillStyle = "#" + color.toString(16).padStart(6, "0") + "44";
+    ctx.fill();
+    ctx.strokeStyle = "#" + color.toString(16).padStart(6, "0");
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+  }
+
+  // 画家具
+  for (const f of data.furniture) {
+    ctx.fillStyle = "#ffcc00";
+    ctx.fillRect(tx(f.x) - 2, ty(f.y) - 2, 5, 5);
+  }
+}
+
+// ── 相机动画 ─────────────────────────────────────────
+function flyTo(x, z) {
+  const target = new THREE.Vector3(x, 0, z);
+  controls.target.lerp(target, 0.5);
+
+  // 飞向目标
+  const start = camera.position.clone();
+  const end = new THREE.Vector3(x + 5000, 5000, z + 5000);
+  let t = 0;
+  function animateFly() {
+    t += 0.02;
+    if (t >= 1) { t = 1; }
+    const ease = 1 - Math.pow(1 - t, 3);
+    camera.position.lerpVectors(start, end, ease);
+    controls.target.lerpVectors(new THREE.Vector3(5000, 1000, 5000), new THREE.Vector3(x, 0, z), ease);
+    controls.update();
+    if (t < 1) requestAnimationFrame(animateFly);
+  }
+  animateFly();
+}
+
+// ── UI 控制 ──────────────────────────────────────────
+window.togglePanel = function() {
+  document.getElementById("info-panel").classList.toggle("hidden");
+};
+
+window.resetCamera = function() {
+  camera.position.set(12000, 8000, 12000);
+  controls.target.set(5000, 1000, 5000);
+  controls.update();
+};
+
+let walkthroughActive = false;
+let walkAngle = 0;
+window.toggleWalkthrough = function() {
+  walkthroughActive = !walkthroughActive;
+  if (walkthroughActive) {
+    controls.autoRotate = true;
+    controls.autoRotateSpeed = 0.5;
+  } else {
+    controls.autoRotate = false;
+  }
+};
+
+// ── 数据加载 ─────────────────────────────────────────
+async function loadData() {
+  try {
+    const resp = await fetch("./output/interior_scene.json");
+    const data = await resp.json();
+    buildScene(data);
+  } catch(e) {
+    console.warn("Fetch failed, using inline data", e);
+    // fallback: 使用内嵌数据
+  }
+  document.getElementById("loading").classList.add("hidden");
+}
+
+// ── 窗口自适应 ───────────────────────────────────────
+window.addEventListener("resize", () => {
+  const w = container.clientWidth;
+  const h = container.clientHeight;
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+  renderer.setSize(w, h);
+});
+
+// ── 动画循环 ─────────────────────────────────────────
+function animate() {
+  requestAnimationFrame(animate);
+  controls.update();
+  renderer.render(scene, camera);
+}
+
+// ── 启动 ─────────────────────────────────────────────
+loadData();
+animate();
+</script>
+</body>
+</html>

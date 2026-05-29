@@ -1,0 +1,1876 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title> CAD 2D 交互编辑器</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:Microsoft YaHei,sans-serif;overflow:hidden;background:#1a1a2e;color:#fff;height:100vh;display:flex;flex-direction:column}
+
+#header{height:42px;background:rgba(26,26,46,0.97);border-bottom:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;padding:0 12px;gap:8px;flex-shrink:0;z-index:300}
+#header .logo{font-size:14px;font-weight:700;background:linear-gradient(135deg,#667eea,#764ba2);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+#header .spacer{flex:1}
+.btn{padding:3px 10px;border:1px solid rgba(255,255,255,0.15);border-radius:4px;background:rgba(255,255,255,0.05);color:#fff;cursor:pointer;font-size:11px;font-family:inherit;transition:all .15s}
+.btn:hover{background:rgba(255,255,255,0.12)}
+.btn-p{background:linear-gradient(135deg,#667eea,#764ba2);border:none}
+.btn-p:hover{opacity:.9}
+
+#main{flex:1;display:flex;overflow:hidden}
+#left-panel{width:340px;min-width:280px;border-right:1px solid rgba(255,255,255,0.08);display:flex;flex-direction:column;background:rgba(22,22,40,0.95)}
+#canvas-wrap{flex:1;position:relative;overflow:hidden;background:#161628}
+#canvas-2d{width:100%;height:100%;display:block}
+#status-bar{height:26px;display:flex;align-items:center;padding:0 10px;border-top:1px solid rgba(255,255,255,0.05);font-size:10px;color:rgba(255,255,255,0.35);gap:12px;flex-shrink:0}
+#status-bar .coord{color:rgba(255,255,255,0.5)}
+#right-panel{flex:1;display:flex;flex-direction:column;position:relative}
+#canvas-3d{width:100%;height:100%;display:block}
+
+/* 左侧工具列 */
+#tools{display:flex;gap:2px;padding:5px 6px;border-bottom:1px solid rgba(255,255,255,0.08);flex-wrap:wrap;flex-shrink:0}
+.tool-btn{padding:3px 8px;border:1px solid transparent;border-radius:3px;background:transparent;color:rgba(255,255,255,0.6);cursor:pointer;font-size:11px;font-family:inherit;transition:all .12s}
+.tool-btn:hover{background:rgba(255,255,255,0.08);color:#fff}
+.tool-btn.active{border-color:#667eea;color:#fff;background:rgba(102,126,234,0.15)}
+.tool-sep{width:1px;height:16px;background:rgba(255,255,255,0.1);margin:auto 4px}
+
+/* 右侧 3D 工具栏（覆盖） */
+#toolbar-3d{position:absolute;top:6px;left:50%;transform:translateX(-50%);z-index:100;display:flex;gap:3px;background:rgba(0,0,0,0.5);padding:3px 6px;border-radius:6px}
+#toolbar-3d .btn3d{padding:2px 7px;border:1px solid transparent;border-radius:3px;background:transparent;color:rgba(255,255,255,0.6);cursor:pointer;font-size:10px;font-family:inherit}
+#toolbar-3d .btn3d:hover{background:rgba(255,255,255,0.1);color:#fff}
+#toolbar-3d .btn3d.active{border-color:#667eea;color:#fff}
+
+/* 右侧属性面板 */
+#props{position:absolute;top:42px;right:6px;z-index:100;width:200px;background:rgba(0,0,0,0.75);backdrop-filter:blur(6px);border-radius:6px;border:1px solid rgba(255,255,255,0.08);padding:8px;font-size:11px;display:none}
+#props .row{display:flex;justify-content:space-between;padding:2px 0;color:rgba(255,255,255,0.6)}
+#props .title{font-weight:600;color:#fff;margin-bottom:4px}
+
+/* 右下面具栏 */
+#furn-bar{height:32px;display:flex;align-items:center;gap:4px;padding:0 8px;border-top:1px solid rgba(255,255,255,0.08);background:rgba(22,22,40,0.8);flex-shrink:0;overflow-x:auto}
+.furn-chip{padding:2px 8px;border:1px solid rgba(255,255,255,0.1);border-radius:10px;font-size:10px;cursor:pointer;white-space:nowrap;background:rgba(255,255,255,0.03);color:rgba(255,255,255,0.6);transition:all .12s}
+.furn-chip:hover{background:rgba(102,126,234,0.15);color:#fff;border-color:#667eea}
+
+::-webkit-scrollbar{width:2px;height:2px}
+::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.1);border-radius:2px}
+</style>
+</head>
+<body>
+
+<div id="header">
+  <span class="logo"> CAD 交互编辑器</span>
+  <span style="font-size:10px;color:rgba(255,255,255,0.3)">左侧画图 · 右侧3D预览</span>
+  <span class="spacer"></span>
+  <button class="btn" onclick="saveDoc()"> 保存</button>
+  <button class="btn" onclick="loadDoc()"> 打开</button>
+  <button class="btn btn-p" onclick="exportDXF()"> DXF</button>
+  <button class="btn" onclick="exportPNG()"> PNG</button>
+      <button class="btn" onclick="exportPDF()"> PDF</button>
+      <button class="btn" onclick="editRoom()"> 房间名</button>
+      <button class="btn" onclick="exportSVG()"> SVG</button>
+      <button class="btn" onclick="addTitleBlock()"> 图框</button>
+      <button class="btn" onclick="toggleMeasure()"> 测距</button>
+      <button class="btn" onclick="loadBgImage()"> 图片</button>
+      <button class="btn" onclick="adjustBgOpacity(-0.1)"> 透明-</button>
+      <button class="btn" onclick="adjustBgOpacity(0.1)"> 透明+</button>
+      <button class="btn" onclick="setGBStandard()"> 国标</button>
+      <button class="btn" onclick="applyLineWeights()"> 线宽</button>
+      <button class="btn" onclick="showCTB()"> CTB</button>
+      <button class="btn" onclick="togglePolar()"> 极轴</button>
+      <button class="btn" onclick="showHelp()"> ?</button>
+      <button class="btn" onclick="cleanupWalls()"> 合并</button>
+      <button class="btn" onclick="clearAll()" style="color:#e74c3c"> 清空</button>
+</div>
+
+<div id="main">
+  <!-- 左侧 2D -->
+  <div id="left-panel">
+    <div id="tools">
+      <button class="tool-btn active" data-t="select" onclick="setTool('select')"> 选择</button>
+      <button class="tool-btn" data-t="wall" onclick="setTool('wall')"> 画墙</button>
+      <button class="tool-btn" data-t="door" onclick="setTool('door')"> 门</button>
+      <button class="tool-btn" data-t="window" onclick="setTool('window')"> 窗</button>
+      <button class="tool-btn" data-t="dim" onclick="setTool('dim')"> 标注</button>
+      <button class="tool-btn" data-t="room" onclick="setTool('room')"> 房间</button>
+      <div class="tool-sep"></div>
+      <button class="tool-btn" onclick="undo()">↩</button>
+      <button class="tool-btn" onclick="redo()">↪</button>
+      <button class="tool-btn" onclick="zoomFit()"> 适配</button><div class="tool-sep"></div><button class="tool-btn" onclick="toggleLayerPanel()"> 网格</button><button class="tool-btn" onclick="toggleSnap()"> 吸附</button><button class="tool-btn" onclick="toggleLayerPanel()"> 图层</button>
+    </div>
+    <div id="canvas-wrap">
+      <canvas id="canvas-2d"></canvas>
+    </div>
+    <div id="status-bar">
+      <span id="tool-status">就绪</span>
+      <span class="coord" id="coord-status">0, 0</span>
+    <div id="layer-panel" style="display:none;position:absolute;left:6px;top:44px;background:rgba(0,0,0,0.85);backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,0.08);border-radius:6px;padding:8px;width:140px;z-index:200;font-size:10px">
+      <div style="font-weight:600;margin-bottom:4px;color:rgba(255,255,255,0.7)"> 图层</div>
+    </div>
+
+    </div>
+  </div>
+
+  <!-- 右侧 3D -->
+  <div id="right-panel">
+    <div id="toolbar-3d">
+      <button class="btn3d active" onclick="set3DView('3d')"> 3D</button>
+      <button class="btn3d" onclick="set3DView('top')"> 俯视</button>
+      <button class="btn3d" onclick="toggleAutoRotate()"> 漫游</button>
+      <button class="btn3d" onclick="snapshot()"> 截图</button><span style="width:4px"></span><select onchange="changeFloorTexture(this.value)" style="background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.1);border-radius:3px;color:#fff;font-size:10px;padding:2px 4px;cursor:pointer"><option>橡木</option><option>大理石</option><option>混凝土</option><option>瓷砖</option><option>金属</option></select>
+    </div>
+    <canvas id="canvas-3d"></canvas>
+    <div id="props"></div>
+    <div id="furn-bar"></div>
+  </div>
+</div>
+
+<script type="importmap">{"imports":{"three":"./lib/three.module.js","three/addons/":"./lib/"}}</script>
+<script type="module">
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/OrbitControls.js";
+
+
+// ===================== PBR 材质系统 =====================
+const texLoader = new THREE.TextureLoader();
+const TEXTURE_LIB = {
+  "橡木":{color:"./textures/wood_oak/Wood037_1K-JPG_Color.jpg",roughness:"./textures/wood_oak/Wood037_1K-JPG_Roughness.jpg",normal:"./textures/wood_oak/Wood037_1K-JPG_NormalGL.jpg",fallback:"#C4A882"},
+  "大理石":{color:"./textures/marble_white/Marble003_1K-JPG_Color.jpg",roughness:"./textures/marble_white/Marble003_1K-JPG_Roughness.jpg",normal:"./textures/marble_white/Marble003_1K-JPG_NormalGL.jpg",fallback:"#E0D8D0"},
+  "混凝土":{color:"./textures/concrete/Concrete020_1K-JPG_Color.jpg",roughness:"./textures/concrete/Concrete020_1K-JPG_Roughness.jpg",normal:"./textures/concrete/Concrete020_1K-JPG_NormalGL.jpg",fallback:"#A0A0A0"},
+  "天鹅绒":{color:"./textures/fabric_velvet/Fabric013_1K-JPG_Color.jpg",roughness:"./textures/fabric_velvet/Fabric013_1K-JPG_Roughness.jpg",normal:"./textures/fabric_velvet/Fabric013_1K-JPG_NormalGL.jpg",fallback:"#7B6B8A"},
+  "纯棉":{color:"./textures/fabric_cotton/Fabric019_1K-JPG_Color.jpg",roughness:"./textures/fabric_cotton/Fabric019_1K-JPG_Roughness.jpg",normal:"./textures/fabric_cotton/Fabric019_1K-JPG_NormalGL.jpg",opacity:"./textures/fabric_cotton/Fabric019_1K-JPG_Opacity.jpg",fallback:"#F0EDE8"},
+  "金属":{color:"./textures/metal_brushed/Metal032_1K-JPG_Color.jpg",roughness:"./textures/metal_brushed/Metal032_1K-JPG_Roughness.jpg",normal:"./textures/metal_brushed/Metal032_1K-JPG_NormalGL.jpg",metalness:"./textures/metal_brushed/Metal032_1K-JPG_Metalness.jpg",fallback:"#A0A0A0"},
+  "瓷砖":{color:"./textures/tile_ceramic/Tiles065_1K-JPG_Color.jpg",roughness:"./textures/tile_ceramic/Tiles065_1K-JPG_Roughness.jpg",normal:"./textures/tile_ceramic/Tiles065_1K-JPG_NormalGL.jpg",fallback:"#E8E0D0"},
+  "皮革":{color:"./textures/leather/Leather008_1K-JPG_Color.jpg",roughness:"./textures/leather/Leather008_1K-JPG_Roughness.jpg",normal:"./textures/leather/Leather008_1K-JPG_NormalGL.jpg",fallback:"#8B5E3C"},
+  "墙面":{color:"./textures/plaster_wall/Plaster001_1K-JPG_Color.jpg",roughness:"./textures/plaster_wall/Plaster001_1K-JPG_Roughness.jpg",normal:"./textures/plaster_wall/Plaster001_1K-JPG_NormalGL.jpg",fallback:"#F0EBE5"},
+};
+
+const textureCache = {};
+
+function loadPBRMaterial(texName, opts = {}){
+  const lib = TEXTURE_LIB[texName];
+  if(!lib) return new THREE.MeshStandardMaterial({color:opts.color||"#cccccc",roughness:0.6});
+  
+  const mat = new THREE.MeshStandardMaterial({
+    color: opts.color || undefined,
+    roughness: opts.roughness !== undefined ? opts.roughness : 0.6,
+    metalness: opts.metalness || 0,
+    map: texLoader.load(lib.color),
+    roughnessMap: texLoader.load(lib.roughness),
+    normalMap: texLoader.load(lib.normal),
+  });
+  
+  if(lib.metalness) mat.metalnessMap = texLoader.load(lib.metalness);
+  if(lib.opacity) {
+    mat.alphaMap = texLoader.load(lib.opacity);
+    mat.transparent = true;
+  }
+  
+  return mat;
+}
+
+// ===================== CAD DATA MODEL =====================
+let walls = [];        // {id,x1,y1,x2,y2,thick,type}
+let doors = [];        // {id,wallId,pos,width}
+let windows = [];      // {id,wallId,pos,width}
+let rooms = [];        // {id,name,corners,color,area}
+let dims = [];         // {id,x1,y1,x2,y2,offset}
+let furniture = [];    // {id,name,cat,x,y,w,d,color}
+let nextId = 1;
+
+// Undo
+let history = [];
+let histIdx = -1;
+const MAX_HIST = 50;
+
+function saveState(){const s=JSON.stringify({walls,doors,windows,rooms,dims,furniture});history=history.slice(0,histIdx+1);history.push(s);if(history.length>MAX_HIST)history.shift();histIdx=history.length-1;}
+
+function restoreState(i){if(i<0||i>=history.length)return;const s=JSON.parse(history[i]);walls=s.walls;doors=s.doors;windows=s.windows;rooms=s.rooms;dims=s.dims;furniture=s.furniture;histIdx=i;render2D();rebuild3D();updateStatus();}
+
+// ===================== 2D CANVAS ENGINE =====================
+const c2 = document.getElementById("canvas-2d"), ctx = c2.getContext("2d");
+let cam = {x:0,y:0,zoom:0.8};
+let tool = "select";
+let drag = null, sel = null, hover = null;
+let mDown = null, mPos = null;
+let wallDraw = null; // {x,y} for wall drawing start
+
+function resize2D(){const w=document.getElementById("canvas-wrap");c2.width=w.clientWidth;c2.height=w.clientHeight;render2D()}
+window.addEventListener("resize",resize2D);
+
+function w2s(wx,wy){return {x:c2.width/2+(wx-cam.x)*cam.zoom,y:c2.height/2-(wy-cam.y)*cam.zoom}}
+function s2w(sx,sy){return {x:(sx-c2.width/2)/cam.zoom+cam.x,y:-(sy-c2.height/2)/cam.zoom+cam.y}}
+
+function snapToGrid(p){const g=50;return{x:Math.round(p.x/g)*g,y:Math.round(p.y/g)*g}}
+function snapToEndpoint(p,dist=20){
+  for(const w of walls){
+    for(const ep of [{x:w.x1,y:w.y1},{x:w.x2,y:w.y2}]){
+      if(Math.hypot(p.x-ep.x,p.y-ep.y)*cam.zoom<dist)return ep;
+    }
+  }
+  return null;
+}
+
+// ===================== 2D RENDER =====================
+function render2D(){
+  const W=c2.width,H=c2.height;
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle="#161628";ctx.fillRect(0,0,W,H);
+  // Background image tracing layer
+  if(bgImage){ctx.save();ctx.globalAlpha=bgImageOpacity;ctx.drawImage(bgImage,0,0,W,H);ctx.restore();}
+
+  // Grid
+  const gs=50;const gsPx=gs*cam.zoom;
+  if(gsPx>4 && gridVisible){
+    const origin=w2s(0,0);ctx.strokeStyle="rgba(255,255,255,0.04)";ctx.lineWidth=1;
+    for(let x=origin.x%gsPx;x<W;x+=gsPx){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke()}
+    for(let y=origin.y%gsPx;y<H;y+=gsPx){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke()}
+  }
+
+  // Rooms
+  for(const r of rooms){
+    const pts=r.corners.map(p=>w2s(p.x,p.y));
+    ctx.beginPath();ctx.moveTo(pts[0].x,pts[0].y);
+    for(let i=1;i<pts.length;i++)ctx.lineTo(pts[i].x,pts[i].y);
+    ctx.closePath();
+    ctx.fillStyle=r.color+"22";ctx.fill();
+    // Apply hatch pattern
+    if(r.hatch&&window.hatchPatterns[r.hatch]){
+      var box=pts.reduce(function(a,p){return{x:Math.min(a.x,p.x),y:Math.min(a.y,p.y)}},{x:Infinity,y:Infinity});
+      var box2=pts.reduce(function(a,p){return{x:Math.max(a.x,p.x),y:Math.max(a.y,p.y)}},{x:-Infinity,y:-Infinity});
+      window.hatchPatterns[r.hatch](ctx,box.x,box.y,box2.x-box.x,box2.y-box.y,1);
+    }
+    ctx.strokeStyle=r.color+"44";ctx.lineWidth=1;ctx.setLineDash([4,4]);ctx.stroke();ctx.setLineDash([]);
+    const cx=pts.reduce((a,p)=>({x:a.x+p.x/pts.length,y:a.y+p.y/pts.length}),{x:0,y:0});
+    ctx.fillStyle="rgba(255,255,255,0.3)";ctx.font="11px Microsoft YaHei";ctx.textAlign="center";
+    ctx.fillText(r.name+" "+r.area+"m2",cx.x,cx.y);
+  
+  // Box select rectangle
+  if(boxSelect){
+    var bx1=Math.min(boxSelect.x1,boxSelect.x2);
+    var by1=Math.min(boxSelect.y1,boxSelect.y2);
+    var bx2=Math.max(boxSelect.x1,boxSelect.x2);
+    var by2=Math.max(boxSelect.y1,boxSelect.y2);
+    ctx.strokeStyle="#667eea";ctx.lineWidth=1;ctx.setLineDash([4,3]);
+    ctx.strokeRect(bx1,by1,bx2-bx1,by2-by1);
+    ctx.fillStyle="rgba(102,126,234,0.08)";ctx.fillRect(bx1,by1,bx2-bx1,by2-by1);
+    ctx.setLineDash([]);
+  }
+
+  // Polyline preview
+  if(tool==="polyline"&&polylinePts.length>0){
+    for(var pi=1;pi<polylinePts.length;pi++){
+      var pp1=w2s(polylinePts[pi-1].x,polylinePts[pi-1].y);
+      var pp2=w2s(polylinePts[pi].x,polylinePts[pi].y);
+      ctx.strokeStyle="#667eea";ctx.lineWidth=3;
+      ctx.beginPath();ctx.moveTo(pp1.x,pp1.y);ctx.lineTo(pp2.x,pp2.y);ctx.stroke();
+      ctx.fillStyle="#667eea";ctx.beginPath();ctx.arc(pp1.x,pp1.y,4,0,Math.PI*2);ctx.fill();
+    }
+    // Line to cursor
+    if(polylinePts.length>0&&mPos){
+      var last=w2s(polylinePts[polylinePts.length-1].x,polylinePts[polylinePts.length-1].y);
+      var cur=w2s(mPos.x,mPos.y);
+      ctx.strokeStyle="rgba(102,126,234,0.4)";ctx.lineWidth=2;ctx.setLineDash([5,3]);
+      ctx.beginPath();ctx.moveTo(last.x,last.y);ctx.lineTo(cur.x,cur.y);ctx.stroke();ctx.setLineDash([]);
+      // Distance
+      var dist=Math.hypot(mPos.x-polylinePts[polylinePts.length-1].x,mPos.y-polylinePts[polylinePts.length-1].y);
+      ctx.fillStyle="rgba(102,126,234,0.8)";ctx.font="10px sans-serif";ctx.textAlign="center";
+      ctx.fillText((dist/1000).toFixed(2)+"m",(last.x+cur.x)/2,(last.y+cur.y)/2-8);
+    }
+  }
+
+// Scale bar
+  var sbLen=2000;var sbPx=sbLen*cam.zoom;var sbX=20,sbY=c2.height-30;
+  ctx.fillStyle="rgba(255,255,255,0.6)";
+  ctx.fillRect(sbX,sbY,sbPx,3);
+  ctx.fillRect(sbX,sbY-3,1,6);ctx.fillRect(sbX+sbPx,sbY-3,1,6);
+  ctx.fillStyle="rgba(255,255,255,0.5)";
+  ctx.font="9px sans-serif";ctx.textAlign="center";
+  ctx.fillText((sbLen/1000)+"m",sbX+sbPx/2,sbY-6);
+  }
+
+  // Walls
+  for(const w of walls){
+    const p1=w2s(w.x1,w.y1),p2=w2s(w.x2,w.y2);
+    const dx=p2.x-p1.x,dy=p2.y-p1.y;
+    const len=Math.hypot(dx,dy);
+    if(len<1)continue;
+    const nx=-dy/len*w.thick*cam.zoom/2,ny=dx/len*w.thick*cam.zoom/2;
+    ctx.beginPath();
+    ctx.moveTo(p1.x+nx,p1.y+ny);ctx.lineTo(p2.x+nx,p2.y+ny);
+    ctx.lineTo(p2.x-nx,p2.y-ny);ctx.lineTo(p1.x-nx,p1.y-ny);
+    ctx.closePath();
+    ctx.fillStyle=w.type==="外墙"?"rgba(200,200,210,0.25)":"rgba(200,200,210,0.12)";
+    ctx.fill();
+    ctx.strokeStyle=w.type==="外墙"?"rgba(200,200,220,0.6)":"rgba(200,200,220,0.35)";
+    ctx.lineWidth=w===sel?2:1;
+    if(w===hover&&tool==="select"){ctx.strokeStyle="#667eea";ctx.lineWidth=2}
+    ctx.stroke();
+
+    // endpoints
+    if(w===sel||w===hover){
+      ctx.fillStyle="#667eea";ctx.beginPath();ctx.arc(p1.x,p1.y,6,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle="#fff";ctx.beginPath();ctx.arc(p1.x,p1.y,3,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle="#667eea";ctx.beginPath();ctx.arc(p2.x,p2.y,6,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle="#fff";ctx.beginPath();ctx.arc(p2.x,p2.y,3,0,Math.PI*2);ctx.fill();
+      for(const p of[p1,p2]){
+        ctx.fillStyle="#667eea";ctx.beginPath();ctx.arc(p.x,p.y,5,0,Math.PI*2);ctx.fill();
+        ctx.fillStyle="#fff";ctx.beginPath();ctx.arc(p.x,p.y,3,0,Math.PI*2);ctx.fill();
+      }
+    }
+  }
+
+  // Doors
+  for(const d of doors){
+    const w=walls.find(x=>x.id===d.wallId);if(!w)continue;
+    const p=pointOnWall(w,d.pos);
+    if(!p)continue;
+    const ps=w2s(p.x,p.y);
+    const ang=Math.atan2(w.y2-w.y1,w.x2-w.x1);
+    const sw=d.width*cam.zoom;
+    ctx.save();ctx.translate(ps.x,ps.y);ctx.rotate(ang);
+    // door leaf arc
+    ctx.strokeStyle="#43e97b";ctx.lineWidth=2;
+    ctx.beginPath();ctx.moveTo(0,0);ctx.arc(0,0,sw,0,Math.PI/2);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(sw,0);ctx.lineTo(sw,-sw*0.1);ctx.stroke();
+    ctx.fillStyle="rgba(67,233,123,0.15)";ctx.beginPath();ctx.moveTo(0,0);ctx.arc(0,0,sw,0,Math.PI/2);ctx.closePath();ctx.fill();
+    ctx.restore();
+  }
+
+  // Windows
+  for(const wd of windows){
+    const w=walls.find(x=>x.id===wd.wallId);if(!w)continue;
+    const p=pointOnWall(w,wd.pos);
+    if(!p)continue;
+    const ps=w2s(p.x,p.y);
+    const ang=Math.atan2(w.y2-w.y1,w.x2-w.x1);
+    const sw=wd.width*cam.zoom;
+    ctx.save();ctx.translate(ps.x,ps.y);ctx.rotate(ang);
+    ctx.fillStyle="rgba(135,206,235,0.2)";ctx.fillRect(0,-3,sw,6);
+    ctx.strokeStyle="#4facfe";ctx.lineWidth=1.5;
+    ctx.strokeRect(0,-3,sw,6);
+    ctx.beginPath();ctx.moveTo(sw/3,-3);ctx.lineTo(sw/3,3);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(sw*2/3,-3);ctx.lineTo(sw*2/3,3);ctx.stroke();
+    ctx.restore();
+  }
+
+  // Dimensions
+  for(const d of dims){
+    const p1=w2s(d.x1,d.y1),p2=w2s(d.x2,d.y2);
+    const mid={x:(p1.x+p2.x)/2,y:(p1.y+p2.y)/2};
+    const ang=Math.atan2(p2.y-p1.y,p2.x-p1.x);
+    const off=d.offset||40;
+    const nx=-Math.sin(ang)*off,ny=Math.cos(ang)*off;
+    ctx.strokeStyle="#ff6b6b";ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(p1.x+nx,p1.y+ny);ctx.lineTo(p2.x+nx,p2.y+ny);ctx.stroke();
+    // ticks
+    ctx.beginPath();ctx.moveTo(p1.x,p1.y);ctx.lineTo(p1.x+nx*0.65,p1.y+ny*0.65);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(p2.x,p2.y);ctx.lineTo(p2.x+nx*0.65,p2.y+ny*0.65);ctx.stroke();
+    // text
+    const dist=Math.hypot(d.x2-d.x1,d.y2-d.y1);
+    ctx.fillStyle="#ff6b6b";ctx.font="10px sans-serif";ctx.textAlign="center";ctx.textBaseline="bottom";
+    ctx.font="bold 11px sans-serif";var txt=(dist/1000).toFixed(1)+"m";var tw=ctx.measureText(txt).width;ctx.fillStyle="rgba(22,22,40,0.7)";ctx.fillRect(mid.x+nx-tw/2-3,mid.y+ny-10,tw+6,14);ctx.fillStyle="#ff6b6b";ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillText(txt,mid.x+nx,mid.y+ny-3);
+  }
+
+  // Furniture (from 3D sync)
+  for(const f of furniture){
+    const p=w2s(f.x,f.y);
+    const w=f.w*cam.zoom,d=f.d*cam.zoom;
+    ctx.save();ctx.translate(p.x,p.y);
+    ctx.fillStyle=f.color+"66";ctx.strokeStyle=f.color;ctx.lineWidth=1.5;
+    ctx.fillRect(-w/2,-d/2,w,d);ctx.strokeRect(-w/2,-d/2,w,d);
+    ctx.fillStyle="rgba(255,255,255,0.5)";ctx.font="8px sans-serif";ctx.textAlign="center";
+    ctx.fillText(f.name,0,3);
+    ctx.restore();
+  }
+
+  // Wall drawing preview
+  if(tool==="wall"&&wallDraw&&mPos){
+    const p1=w2s(wallDraw.x,wallDraw.y),p2=w2s(mPos.x,mPos.y);
+    ctx.strokeStyle="#667eea";ctx.lineWidth=2;ctx.setLineDash([6,4]);
+    ctx.beginPath();ctx.moveTo(p1.x,p1.y);ctx.lineTo(p2.x,p2.y);ctx.stroke();ctx.setLineDash([]);
+  }
+}
+
+function pointOnWall(w,pos){
+  const dx=w.x2-w.x1,dy=w.y2-w.y1;
+  const len=Math.hypot(dx,dy);if(len<1)return null;
+  const r=pos/len;
+  return {x:w.x1+dx*r,y:w.y1+dy*r};
+}
+
+function distToSegment(px,py,x1,y1,x2,y2){
+  const dx=x2-x1,dy=y2-y1;
+  const len2=dx*dx+dy*dy;if(len2<1)return Math.hypot(px-x1,py-y1);
+  let t=((px-x1)*dx+(py-y1)*dy)/len2;t=Math.max(0,Math.min(1,t));
+  return Math.hypot(px-(x1+t*dx),py-(y1+t*dy));
+}
+
+function hitTest(px,py){
+  // walls
+  for(const w of walls){
+    if(distToSegment(px,py,w.x1,w.y1,w.x2,w.y2)<Math.max(w.thick/2,50))return{type:"wall",obj:w};
+  }
+  return null;
+}
+
+// ===================== 2D TOOLS =====================
+window.setTool=function(t){
+  tool=t;wallDraw=null;sel=null;
+  document.querySelectorAll("[data-t]").forEach(b=>b.classList.toggle("active",b.dataset.t===t));
+  document.getElementById("tool-status").textContent={select:"选择 - 点击墙选中，拖端点改尺寸",wall:"画墙 - 点击起点，移动后点击终点",door:"门 - 点击墙放置门",window:"窗 - 点击墙放置窗",dim:"标注 - 点击两点标注尺寸",room:"房间 - 自动识别房间"}[t]||t;
+};
+
+window.undo=function(){if(histIdx>0){restoreState(histIdx-1);render2D();rebuild3D()}};
+window.redo=function(){if(histIdx<history.length-1){restoreState(histIdx+1);render2D();rebuild3D()}};
+
+function addWall(x1,y1,x2,y2,thick,type){
+  walls.push({id:nextId++,x1,y1,x2,y2,thick:thick||200,type:type||"内墙"});
+  saveState();render2D();rebuild3D();updateStatus();
+}
+
+function addDoor(wallId,pos,width){
+  doors.push({id:nextId++,wallId,pos,width:width||900});
+  saveState();render2D();rebuild3D();updateStatus();
+}
+
+function addWindow(wallId,pos,width){
+  windows.push({id:nextId++,wallId,pos,width:width||1200});
+  saveState();render2D();rebuild3D();updateStatus();
+}
+
+function addDim(x1,y1,x2,y2,offset){
+  dims.push({id:nextId++,x1,y1,x2,y2,offset:offset||40});
+  saveState();render2D();
+}
+
+function detectRoom(){
+  // Simple room detection from wall loops
+  if(walls.length<3)return;
+  saveState();
+  rooms=[];
+  const pts=[];
+  // Build connected wall segments
+  const used=new Set();
+  let cur=walls[0];let path=[{x:cur.x1,y:cur.y1},{x:cur.x2,y:cur.y2}];used.add(cur.id);
+  let found=true;
+  while(found){
+    found=false;
+    for(const w of walls){
+      if(used.has(w.id))continue;
+      const last=path[path.length-1];
+      const d1=Math.hypot(w.x1-last.x,w.y1-last.y);
+      const d2=Math.hypot(w.x2-last.x,w.y2-last.y);
+      if(d1<10){path.push({x:w.x2,y:w.y2});used.add(w.id);found=true;break}
+      if(d2<10){path.push({x:w.x1,y:w.y1});used.add(w.id);found=true;break}
+    }
+  }
+  // Close path
+  path.push({...path[0]});
+  // Calculate area
+  let area=0;for(let i=0;i<path.length-1;i++)area+=path[i].x*path[i+1].y-path[i+1].x*path[i].y;
+  area=Math.abs(area)/2;
+  if(area>1){
+    const colors={"#667eea","#f093fb","#4facfe","#43e97b","#fa709a","#764ba2","#a8a8a8"};
+    rooms.push({id:nextId++,name:"房间"+(rooms.length+1),corners:path.slice(0,-1),color:colors[rooms.length%colors.length],area:Math.round(area/1e6*10)/10});
+  }
+  // Add remaining unconnected walls as separate rooms
+  for(const w of walls){
+    if(!used.has(w.id)){
+      rooms.push({id:nextId++,name:"房间"+(rooms.length+1),corners:[{x:w.x1,y:w.y1},{x:w.x2,y:w.y2},{x:(w.x1+w.x2)/2+2000,y:(w.y1+w.y2)/2+2000}],color:colors[rooms.length%colors.length],area:0});
+    }
+  }
+  render2D();rebuild3D();updateStatus();
+}
+
+// ===================== 2D MOUSE EVENTS =====================
+c2.addEventListener("pointerdown",e=>{
+  const r=c2.getBoundingClientRect();
+  const wp=s2w(e.clientX-r.left,e.clientY-r.top);
+  mDown=wp;mPos=wp;
+  if(tool==="wall"){
+    const snap=snapToEndpoint(wp,15/cam.zoom);
+    const p=snap||snapToGrid(wp);
+    if(!wallDraw){wallDraw=p}
+    else{
+      if(Math.hypot(p.x-wallDraw.x,p.y-wallDraw.y)>100){
+        addWall(wallDraw.x,wallDraw.y,p.x,p.y);wallDraw=p;
+      }else{wallDraw=null}
+    }
+    return;
+  }
+  if(tool==="door"||tool==="window"){
+    for(const w of walls){
+      if(distToSegment(wp.x,wp.y,w.x1,w.y1,w.x2,w.y2)<w.thick/2+100){
+        const dx=w.x2-w.x1,dy=w.y2-w.y1;
+        const len=Math.hypot(dx,dy);
+        const pos=((wp.x-w.x1)*dx+(wp.y-w.y1)*dy)/len;
+        if(pos>200&&pos<len-200){
+          if(tool==="door")addDoor(w.id,pos,900);
+          else addWindow(w.id,pos,1200);
+        }
+        return;
+      }
+    }
+    return;
+  }
+  if(tool==="dim"){
+    if(!mDown){mDown=wp;return}
+    addDim(mDown.x,mDown.y,wp.x,wp.y);mDown=null;return;
+  }
+  if(tool==="room"){detectRoom();return}
+
+  if(tool==="polyline"){handlePolylineClick(wp);return;}
+  if(tool==="arc"){
+    if(!arcDrawState){
+      arcDrawState={x1:wp.x,y1:wp.y};
+      document.getElementById("tool-status").textContent="  弧墙: 点第二点(弧中点)";
+    }else if(!arcDrawState.x2){
+      arcDrawState.x2=wp.x;arcDrawState.y2=wp.y;
+      document.getElementById("tool-status").textContent="  弧墙: 点第三点(终点)";
+    }else{
+      // Three points: start, middle control, end -> compute arc center
+      var x1=arcDrawState.x1,y1=arcDrawState.y1;
+      var x3=wp.x,y3=wp.y;
+      var x2=arcDrawState.x2,y2=arcDrawState.y2;
+      // Perpendicular bisectors intersection = center
+      var ma=(y2-y1)/(x2-x1+0.001),mb=(y3-y2)/(x3-x2+0.001);
+      var cx=(ma*mb*(y1-y3)+mb*(x1+x2)-ma*(x2+x3))/(2*(mb-ma)+0.001);
+      var cy=-1/ma*(cx-(x1+x2)/2)+(y1+y2)/2;
+      // Check if valid
+      var r=Math.hypot(cx-x1,cy-y1);
+      if(r>500&&r<50000){
+        window._addArcWall(x1,y1,x3,y3,cx,cy);
+      }else{
+        document.getElementById("tool-status").textContent="  弧墙: 弧半径不合理, 重试";
+      }
+      arcDrawState=null;
+    }
+    return;
+  }
+
+  // select
+  const hit=hitTest(wp.x,wp.y);
+  if(hit&&hit.type==="wall"){
+    sel=hit.obj;render2D();showProps(sel);
+  }else{
+    sel=null;document.getElementById("props").style.display="none";render2D();
+  }
+});
+
+
+c2.addEventListener("dblclick",function(e){
+  if(tool==="polyline"&&polylinePts.length>1){finishPolyline();}
+});
+c2.addEventListener("pointermove",e=>{
+  const r=c2.getBoundingClientRect();
+  const wp=s2w(e.clientX-r.left,e.clientY-r.top);
+  mPos=wp;
+  document.getElementById("coord-status").textContent=(wp.x/1000).toFixed(1)+"m, "+(wp.y/1000).toFixed(1)+"m";
+
+  // Real-time drawing feedback
+  if(tool==="wall"&&wallDraw&&mPos){
+    var _dx=mPos.x-wallDraw.x,_dy=mPos.y-wallDraw.y;
+    var _len=Math.hypot(_dx,_dy);
+    var _ang=Math.atan2(_dy,_dx)*180/Math.PI;
+    document.getElementById("coord-status").textContent=
+      "长度: "+(_len/1000).toFixed(2)+"m | 角度: "+_ang.toFixed(1)+"° | 起点: ("+(wallDraw.x/1000).toFixed(1)+", "+(wallDraw.y/1000).toFixed(1)+")";
+  }
+
+  if(tool==="wall"){render2D();return}
+  if(tool==="select"){
+    const hit=hitTest(wp.x,wp.y);
+    hover=hit?hit.obj:null;
+    c2.style.cursor=hover?"pointer":"";
+    render2D();
+  }
+});
+
+c2.addEventListener("wheel",e=>{
+  e.preventDefault();
+  const r=c2.getBoundingClientRect();
+  const wp=s2w(e.clientX-r.left,e.clientY-r.top);
+  cam.zoom*=e.deltaY>0?0.9:1.1;
+  cam.zoom=Math.max(0.05,Math.min(10,cam.zoom));
+  // Zoom toward cursor
+  const np=s2w(e.clientX-r.left,e.clientY-r.top);
+  cam.x+=wp.x-np.x;cam.y+=wp.y-np.y;
+  render2D();
+},{passive:false});
+
+c2.addEventListener("contextmenu",e=>e.preventDefault());
+
+// ===================== 3D SCENE =====================
+const c3d=document.getElementById("canvas-3d");
+const scene=new THREE.Scene();scene.background=new THREE.Color("#F0EBE5");
+const camera3=new THREE.PerspectiveCamera(50,c3d.clientWidth/c3d.clientHeight,0.1,100);
+camera3.position.set(8,6,10);
+const renderer3=new THREE.WebGLRenderer({antialias:true});
+renderer3.setSize(c3d.clientWidth,c3d.clientHeight);
+renderer3.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer3.shadowMap.enabled=true;renderer3.shadowMap.type=THREE.PCFSoftShadowMap;
+renderer3.toneMapping=THREE.ACESFilmicToneMapping;renderer3.toneMappingExposure=1.0;
+c3d.appendChild(renderer3.domElement);
+const controls3=new OrbitControls(camera3,renderer3.domElement);
+controls3.target.set(0,1.2,0);controls3.enableDamping=true;controls3.dampingFactor=0.08;
+controls3.maxPolarAngle=Math.PI/2.05;controls3.minDistance=1;controls3.maxDistance=30;
+controls3.update();
+scene.add(new THREE.AmbientLight(0x404060,0.5));
+scene.add(new THREE.HemisphereLight(0x8888ff,0x444422,0.6));
+const sun3=new THREE.DirectionalLight(0xffeedd,1.2);
+sun3.position.set(5,12,8);sun3.castShadow=true;
+sun3.shadow.mapSize.set(1024,1024);sun3.shadow.camera.near=0.1;sun3.shadow.camera.far=30;
+sun3.shadow.camera.left=-12;sun3.shadow.camera.right=12;
+sun3.shadow.camera.top=12;sun3.shadow.camera.bottom=-12;
+scene.add(sun3);
+scene.add(new THREE.DirectionalLight(0x4488ff,0.3).position.set(-3,4,-5));
+
+const roomG=new THREE.Group();scene.add(roomG);
+const floorMat3=loadPBRMaterial("橡木",{roughness:0.7});
+const floor3=new THREE.Mesh(new THREE.PlaneGeometry(20,20),floorMat3);
+floor3.rotation.x=-Math.PI/2;floor3.position.y=-2;floor3.receiveShadow=true;
+roomG.add(floor3);
+
+
+// ===================== 程序化家具生成器 =====================
+function wood(c){return new THREE.MeshStandardMaterial({color:c,roughness:0.7,metalness:0})}
+function fabric(c){return new THREE.MeshStandardMaterial({color:c,roughness:0.9,metalness:0})}
+function metal(c){return new THREE.MeshStandardMaterial({color:c,roughness:0.3,metalness:0.7})}
+
+function buildFurniture3D(f){
+  var g=new THREE.Group(),W=wood(f.color||"#C4A882"),M=fabric(f.color||"#cccccc"),LM=metal("#2D2D2D");
+  var w=f.w/1000||1,h=f.h/1000||0.5,d=f.d/1000||1;
+  var leg=function(h2){return new THREE.Mesh(new THREE.CylinderGeometry(0.02,0.02,h2||0.12),LM)};
+  
+  // Bed
+  if(f.name.indexOf("床")>=0||f.name==="双人床"||f.name==="单人床"){
+    M=fabric(f.color||"#D2B48C");
+    var b=new THREE.Mesh(new THREE.BoxGeometry(w,0.25,d),M);
+    b.position.y=0.125;b.castShadow=true;g.add(b);
+    var hd=new THREE.Mesh(new THREE.BoxGeometry(w,0.5,0.1),wood(f.color||"#8B6914"));
+    hd.position.set(0,0.4,-d/2+0.05);hd.castShadow=true;g.add(hd);
+    var p=new THREE.Mesh(new THREE.BoxGeometry(w*0.5,0.1,0.3),fabric("#FFFFFF"));
+    p.position.set(0,0.25,-d/2+0.25);g.add(p);
+    var q=new THREE.Mesh(new THREE.BoxGeometry(w*0.8,0.06,d*0.5),fabric(new THREE.Color(f.color||"#D2B48C").offsetHSL(0,0,-0.1).getStyle()));
+    q.position.set(0,0.2,0.1);q.castShadow=true;g.add(q);
+    return g;
+  }
+  // Sofa
+  if(f.name.indexOf("沙发")>=0){
+    M=fabric(f.color||"#8B4513");
+    var b=new THREE.Mesh(new THREE.BoxGeometry(w,0.25,d),M);
+    b.position.y=0.2;b.castShadow=true;g.add(b);
+    var bk=new THREE.Mesh(new THREE.BoxGeometry(w,0.4,0.08),M);
+    bk.position.set(0,0.45,-d/2+0.04);bk.castShadow=true;g.add(bk);
+    var ar=new THREE.Mesh(new THREE.BoxGeometry(0.08,0.25,d*0.6),M);
+    ar.position.set(-w/2+0.04,0.35,0);ar.castShadow=true;g.add(ar);
+    var ar2=ar.clone();ar2.position.x=w/2-0.04;g.add(ar2);
+    var cs=new THREE.Mesh(new THREE.BoxGeometry(w*0.42,0.06,d*0.6),fabric(new THREE.Color(f.color||"#8B4513").offsetHSL(0,0,0.05).getStyle()));
+    cs.position.set(-w*0.13,0.35,0);cs.castShadow=true;g.add(cs);
+    var cs2=cs.clone();cs2.position.x=w*0.13;g.add(cs2);
+    [-1,1].forEach(function(x){var l=leg();l.position.set(x*(w/2-0.06),0.06,d/2-0.06);g.add(l);var l2=leg();l2.position.set(x*(w/2-0.06),0.06,-d/2+0.06);g.add(l2)});
+    return g;
+  }
+  // Table
+  if(f.name.indexOf("桌")>=0||f.name.indexOf("茶几")>=0){
+    W=wood(f.color||"#DEB887");
+    var t=new THREE.Mesh(new THREE.BoxGeometry(w,0.04,d),W);
+    t.position.y=h;t.castShadow=true;t.receiveShadow=true;g.add(t);
+    [-1,1].forEach(function(x){[-1,1].forEach(function(z){var l=new THREE.Mesh(new THREE.CylinderGeometry(0.025,0.025,h-0.02),LM);l.position.set(x*(w/2-0.05),(h-0.02)/2,z*(d/2-0.05));l.castShadow=true;g.add(l)})});
+    return g;
+  }
+  // Chair
+  if(f.name.indexOf("椅")>=0||f.name.indexOf("凳")>=0){
+    W=wood(f.color||"#C4A882");
+    var sh=0.4;
+    var s=new THREE.Mesh(new THREE.BoxGeometry(w*0.7,0.04,d*0.7),W);
+    s.position.y=sh;s.castShadow=true;g.add(s);
+    var bk=new THREE.Mesh(new THREE.BoxGeometry(w*0.6,0.3,0.03),W);
+    bk.position.set(0,sh+0.15,-d*0.35);bk.castShadow=true;g.add(bk);
+    [-1,1].forEach(function(x){[-1,1].forEach(function(z){var l=new THREE.Mesh(new THREE.CylinderGeometry(0.015,0.015,sh),W);l.position.set(x*w*0.3,sh/2,z*d*0.3);g.add(l)})});
+    return g;
+  }
+  // Cabinet
+  if(f.name.indexOf("柜")>=0||f.name.indexOf("橱")>=0){
+    W=wood(f.color||"#C4A882");
+    var bd=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),W);
+    bd.position.y=h/2;bd.castShadow=true;g.add(bd);
+    for(var i=0;i<3;i++){var sh2=new THREE.Mesh(new THREE.BoxGeometry(w-0.02,0.02,d-0.02),W);sh2.position.set(0,(i+1)*h/4,0);g.add(sh2)}
+    return g;
+  }
+  // Appliance (fridge, etc.)
+  if(f.name.indexOf("冰箱")>=0||f.name.indexOf("洗衣")>=0){
+    var aMat=new THREE.MeshStandardMaterial({color:new THREE.Color(f.color||"#C0C0C0"),roughness:0.3,metalness:0.5});
+    var bd=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),aMat);
+    bd.position.y=h/2;bd.castShadow=true;g.add(bd);
+    return g;
+  }
+  // Sanitary
+  if(f.name.indexOf("马桶")>=0||f.name.indexOf("洗手")>=0||f.name.indexOf("浴缸")>=0){
+    var sMat=new THREE.MeshStandardMaterial({color:new THREE.Color(f.color||"#F5F5F5"),roughness:0.4,metalness:0.1});
+    if(f.name.indexOf("马桶")>=0){
+      var bd=new THREE.Mesh(new THREE.BoxGeometry(w,h*0.5,d),sMat);
+      bd.position.y=h*0.25;bd.castShadow=true;g.add(bd);
+      var tk=new THREE.Mesh(new THREE.BoxGeometry(w*0.6,h*0.4,d*0.6),sMat);
+      tk.position.set(0,h*0.5+d*0.1,0);g.add(tk);
+    } else if(f.name.indexOf("洗手")>=0){
+      var bd=new THREE.Mesh(new THREE.BoxGeometry(w,h*0.6,d),sMat);
+      bd.position.y=h*0.3;bd.castShadow=true;g.add(bd);
+      var bs=new THREE.Mesh(new THREE.BoxGeometry(w*0.8,0.05,d*0.7),sMat);
+      bs.position.y=h*0.65;g.add(bs);
+    } else {
+      var bd=new THREE.Mesh(new THREE.BoxGeometry(w,h*0.4,d),sMat);
+      bd.position.y=h*0.2;bd.castShadow=true;g.add(bd);
+    }
+    return g;
+  }
+  // Default: simple box with label
+  var dft=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),new THREE.MeshStandardMaterial({color:f.color||"#cccccc",roughness:0.6}));
+  dft.position.y=h/2;dft.castShadow=true;g.add(dft);
+  return g;
+}
+function rebuild3D(){
+  // Clear old
+  while(roomG.children.length)roomG.remove(roomG.children[0]);
+  const fl=new THREE.Mesh(new THREE.PlaneGeometry(30,30),floorMat3);
+  fl.rotation.x=-Math.PI/2;fl.position.y=-2;fl.receiveShadow=true;roomG.add(fl);
+  // 3D Arc walls
+  for(var a=0;a<wallsArc.length;a++){
+    var aw=wallsArc[a];
+    var shape=new THREE.Shape();
+    var ir=aw.radius-aw.thick/2, or=aw.radius+aw.thick/2;
+    var steps=32;
+    shape.moveTo(Math.cos(aw.startAngle)*ir,Math.sin(aw.startAngle)*ir);
+    for(var s=1;s<=steps;s++){
+      var t=aw.startAngle+(aw.endAngle-aw.startAngle)*s/steps;
+      shape.lineTo(Math.cos(t)*ir,Math.sin(t)*ir);
+    }
+    for(var s=steps;s>=0;s--){
+      var t=aw.startAngle+(aw.endAngle-aw.startAngle)*s/steps;
+      shape.lineTo(Math.cos(t)*or,Math.sin(t)*or);
+    }
+    shape.closePath();
+    var extSettings={depth:2.8,bevelEnabled:false};
+    var geo=new THREE.ExtrudeGeometry(shape,extSettings);
+    var mat=new THREE.MeshStandardMaterial({color:0xF0EBE5,roughness:0.9});
+    var mesh=new THREE.Mesh(geo,mat);
+    mesh.position.set(aw.cx/1000,-1.4,aw.cy/1000);
+    mesh.rotation.x=0;
+    mesh.castShadow=true;mesh.receiveShadow=true;
+    roomG.add(mesh);
+  }
+
+  // Sky
+  var skyGeo=new THREE.SphereGeometry(80,32,32);
+  var skyMat=new THREE.MeshBasicMaterial({color:0x87CEEB,side:THREE.BackSide});
+  var sky=new THREE.Mesh(skyGeo,skyMat);
+  roomG.add(sky);
+  
+  // Ground plane with grass
+  var groundMat=new THREE.MeshStandardMaterial({color:0x7CB342,roughness:0.9});
+  var ground=new THREE.Mesh(new THREE.PlaneGeometry(60,60),groundMat);
+  ground.rotation.x=-Math.PI/2;ground.position.y=-2.1;ground.receiveShadow=true;
+  roomG.add(ground);
+  
+  // Some simple trees (cones + cylinders)
+  var treePositions=[[-12,-8],[10,-10],[-10,12],[14,9]];
+  var trunkMat=new THREE.MeshStandardMaterial({color:0x5D4037,roughness:0.9});
+  var leafMat=new THREE.MeshStandardMaterial({color:0x4CAF50,roughness:0.8});
+  for(var t=0;t<treePositions.length;t++){
+    var trunk=new THREE.Mesh(new THREE.CylinderGeometry(0.15,0.2,1.5),trunkMat);
+    trunk.position.set(treePositions[t][0],-1.25,treePositions[t][1]);
+    trunk.castShadow=true;roomG.add(trunk);
+    var leaf=new THREE.Mesh(new THREE.ConeGeometry(0.8,1.5,6),leafMat);
+    leaf.position.set(treePositions[t][0],0,treePositions[t][1]);
+    leaf.castShadow=true;roomG.add(leaf);
+    var leaf2=new THREE.Mesh(new THREE.ConeGeometry(0.6,1.2,6),leafMat);
+    leaf2.position.set(treePositions[t][0],0.8,treePositions[t][1]);
+    leaf2.castShadow=true;roomG.add(leaf2);
+  }
+
+
+  const wMat=loadPBRMaterial("墙面");
+  const h=2800;
+  for(const w of walls){
+    const dx=w.x2-w.x1,dy=w.y2-w.y1;
+    const len=Math.hypot(dx,dy);if(len<1)continue;
+    const m=new THREE.Mesh(new THREE.BoxGeometry(len/1000,h/1000,w.thick/1000),wMat);
+    m.position.set((w.x1+w.x2)/2000,h/2000,(w.y1+w.y2)/2000);
+    m.rotation.y=-Math.atan2(dy,dx);
+    m.castShadow=true;m.receiveShadow=true;roomG.add(m);
+  }
+  for(var fi=0;fi<furniture.length;fi++){
+    var f=furniture[fi];
+    var m=buildFurniture3D(f);
+    if(m){
+      m.position.set(f.x/1000,0,f.y/1000);
+      m.rotation.y=(f.rotation||0)*Math.PI/180;
+      m.castShadow=true;
+      roomG.add(m);
+    }
+  }
+}
+
+// ===================== 3D VIEW CONTROL =====================
+window.set3DView=function(m){
+  document.querySelectorAll("#toolbar-3d .btn3d").forEach(b=>b.classList.remove("active"));
+  if(m==="top"){camera3.position.set(0,15,0.01);controls3.target.set(0,0,0)}
+  else{camera3.position.set(8,6,10);controls3.target.set(0,1.2,0)}
+  controls3.update();
+};
+window.toggleAutoRotate=function(){controls3.autoRotate=!controls3.autoRotate;controls3.autoRotateSpeed=0.6};
+window.snapshot=function(){renderer3.render(scene,camera3);const a=document.createElement("a");a.download="cad_snapshot.png";a.href=renderer3.domElement.toDataURL("image/png");a.click()};
+
+
+// ===================== SVG 导出 =====================
+
+
+// ===================== PDF 导出 =====================
+window.exportPDF=function(){
+  render2D();
+  var W=c2.width,H=c2.height;
+  // Create PDF-like SVG wrapper that browsers can print to PDF
+  var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="'+W+'" height="'+H+'" viewBox="0 0 '+W+' '+H+'">';
+  svg += '<rect width="100%" height="100%" fill="#161628"/>';
+  svg += '<foreignObject width="100%" height="100%"><img src="'+c2.toDataURL("image/png")+'" width="'+W+'" height="'+H+'"/></foreignObject></svg>';
+  var win=window.open("","_blank");
+  win.document.write('<html><head><title>Floor Plan PDF</title><style>body{margin:0}@media print{@page{size:A3 landscape;margin:0}}img{width:100%;height:auto}</style></head><body>');
+  win.document.write('<img src="'+c2.toDataURL("image/png")+'" onload="window.print()" style="width:100%"/>');
+  win.document.write('</body></html>');
+  win.document.close();
+};
+window.exportPNG=function(){render2D();c2.toBlob(function(b){var a=document.createElement("a");a.download="floorplan.png";a.href=URL.createObjectURL(b);a.click()},"image/png")};
+window.exportSVG=function(){
+  let svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${c2.width} ${c2.height}" width="${c2.width}" height="${c2.height}">`;
+  svg += `<rect width="100%" height="100%" fill="#161628"/>`;
+  
+  // Walls
+  for(const w of walls){
+    const p1=w2s(w.x1,w.y1),p2=w2s(w.x2,w.y2);
+    const dx=p2.x-p1.x,dy=p2.y-p1.y;
+    const len=Math.hypot(dx,dy);
+    if(len<1)continue;
+    const nx=-dy/len*w.thick*cam.zoom/2,ny=dx/len*w.thick*cam.zoom/2;
+    const pts=`${p1.x+nx},${p1.y+ny} ${p2.x+nx},${p2.y+ny} ${p2.x-nx},${p2.y-ny} ${p1.x-nx},${p1.y-ny}`;
+    svg+=`<polygon points="${pts}" fill="${w.type==="外墙"?"#ddd":"#eee"}" stroke="#999" stroke-width="1"/>`;
+  }
+  
+  // Doors
+  for(const d of doors){
+    const w=walls.find(x=>x.id===d.wallId);if(!w)continue;
+    const p=pointOnWall(w,d.pos);if(!p)continue;
+    const ps=w2s(p.x,p.y);
+    const ang=Math.atan2(w.y2-w.y1,w.x2-w.x1);
+    const sw=d.width*cam.zoom;
+    svg+=`<g transform="translate(${ps.x},${ps.y}) rotate(${ang*180/Math.PI})">`;
+    svg+=`<path d="M0,0 A${sw},${sw} 0 0,1 ${sw},${sw}" fill="rgba(67,233,123,0.2)" stroke="#43e97b" stroke-width="1.5"/>`;
+    svg+=`<line x1="${sw}" y1="0" x2="${sw}" y2="${-sw*0.1}" stroke="#43e97b" stroke-width="1.5"/>`;
+    svg+=`</g>`;
+  }
+  
+  // Rooms
+  for(const r of rooms){
+    const pts=r.corners.map(c=>w2s(c.x,c.y));
+    const dp=pts.map(p=>`${p.x},${p.y}`).join(" ");
+    svg+=`<polygon points="${dp}" fill="${r.color}22" stroke="${r.color}44" stroke-width="1" stroke-dasharray="4,4"/>`;
+    const cx=pts.reduce((a,p)=>({x:a.x+p.x/pts.length,y:a.y+p.y/pts.length}),{x:0,y:0});
+    svg+=`<text x="${cx.x}" y="${cx.y}" fill="rgba(255,255,255,0.5)" font-size="11" text-anchor="middle" font-family="Microsoft YaHei">${r.name} ${r.area}m2</text>`;
+  }
+  
+  // Dimensions
+  for(const d of dims){
+    const p1=w2s(d.x1,d.y1),p2=w2s(d.x2,d.y2);
+    const ang=Math.atan2(p2.y-p1.y,p2.x-p1.x);
+    const nx=-Math.sin(ang)*40,ny=Math.cos(ang)*40;
+    svg+=`<line x1="${p1.x+nx}" y1="${p1.y+ny}" x2="${p2.x+nx}" y2="${p2.y+ny}" stroke="#ff6b6b" stroke-width="1"/>`;
+    const dist=Math.hypot(d.x2-d.x1,d.y2-d.y1);
+    svg+=`<text x="${(p1.x+p2.x)/2+nx}" y="${(p1.y+p2.y)/2+ny-3}" fill="#ff6b6b" font-size="10" text-anchor="middle">${(dist/1000).toFixed(1)}m</text>`;
+  }
+  
+  svg+=`</svg>`;
+  
+  const blob=new Blob([svg],{type:"image/svg+xml"});
+  const a=document.createElement("a");a.download="floorplan.svg";a.href=URL.createObjectURL(blob);a.click();
+};
+
+
+// ===================== 图框生成 =====================
+window.addTitleBlock=function(){
+  // Draw frame and title block on 2D canvas
+  const margin = 30;
+  const W = c2.width - margin*2, H = c2.height - margin*2;
+  // Outer frame
+  ctx.strokeStyle = "#fff"; ctx.lineWidth = 2;
+  ctx.strokeRect(margin, margin, W, H);
+  // Inner frame
+  ctx.strokeStyle = "rgba(255,255,255,0.3)"; ctx.lineWidth = 1;
+  ctx.strokeRect(margin+10, margin+10, W-20, H-20);
+  // Title block at bottom right
+  const tb_w = 180, tb_h = 50;
+  const tb_x = margin + W - tb_w - 10;
+  const tb_y = margin + H - tb_h - 10;
+  ctx.fillStyle = "rgba(255,255,255,0.05)";
+  ctx.fillRect(tb_x, tb_y, tb_w, tb_h);
+  ctx.strokeStyle = "rgba(255,255,255,0.3)"; ctx.lineWidth = 1;
+  ctx.strokeRect(tb_x, tb_y, tb_w, tb_h);
+  ctx.fillStyle = "rgba(255,255,255,0.5)";
+  ctx.font = "10px sans-serif"; ctx.textAlign = "left";
+  ctx.fillText("项目: 室内设计", tb_x+8, tb_y+18);
+  ctx.fillText("比例 1:50", tb_x+8, tb_y+32);
+  ctx.fillText("A3", tb_x+tb_w-30, tb_y+32);
+};
+
+// ===================== PROPS PANEL =====================
+function showProps(w){
+  const p=document.getElementById("props");p.style.display="block";
+  p.innerHTML=`<div class="title">  墙属性 <span style="font-size:10px;color:rgba(255,255,255,0.3)">(拖端点改尺寸)</span></div>
+    <div class="row"><span>长度</span><span>${Math.hypot(w.x2-w.x1,w.y2-w.y1)/1000|0}m</span></div>
+    <div class="row"><span>厚度</span><span>${w.thick}mm</span></div>
+    <div class="row"><span>类型</span><span>${w.type}</span></div>
+    <div style="margin-top:4px;display:flex;gap:4px">
+      <button class="btn" style="padding:2px 6px;font-size:10px" onclick="delWall()"> 删除</button>
+      <button class="btn" style="padding:2px 6px;font-size:10px" onclick="toggleWallType()">切换内外</button>
+      <button class="btn" style="padding:2px 6px;font-size:10px" onclick="splitWall()">分割</button>
+      <button class="btn" style="padding:2px 6px;font-size:10px" onclick="doOffset()">偏移</button>
+      <button class="btn" style="padding:2px 6px;font-size:10px" onclick="toggleWallType()">切换内外</button>
+    </div>`;
+}
+
+// ===================== 墙分割 =====================
+window.splitWall=function(){
+  if(!sel){document.getElementById("tool-status").textContent="  请先选中要分割的墙";return;}
+  var mx=(sel.x1+sel.x2)/2, my=(sel.y1+sel.y2)/2;
+  saveState();
+  var len=Math.hypot(sel.x2-sel.x1,sel.y2-sel.y1);
+  var dx=(sel.x2-sel.x1)/len*50, dy=(sel.y2-sel.y1)/len*50;
+  walls.push({id:nextId++,x1:sel.x1,y1:sel.y1,x2:mx-dx,y2:my-dy,thick:sel.thick,type:sel.type});
+  walls.push({id:nextId++,x1:mx+dx,y1:my+dy,x2:sel.x2,y2:sel.y2,thick:sel.thick,type:sel.type});
+  walls=walls.filter(function(w){return w!==sel});
+  sel=walls[walls.length-1];
+  saveState();render2D();rebuild3D();updateStatus();
+  document.getElementById("tool-status").textContent="  墙已分割为两段";
+};
+
+window.delWall=function(){if(!sel)return;walls=walls.filter(w=>w!==sel);sel=null;saveState();render2D();rebuild3D();updateStatus();document.getElementById("props").style.display="none"};
+window.toggleWallType=function(){if(!sel)return;sel.type=sel.type==="外墙"?"内墙":"外墙";saveState();render2D();showProps(sel)};
+
+// ===================== FURNITURE BAR =====================
+const FURN_CATALOG=[
+  {id:"bed1",name:"双人床",icon:" ",w:2000,d:1800,color:"#D2B48C"},
+  {id:"sofa1",name:"沙发",icon:" ",w:2200,d:850,color:"#8B4513"},
+  {id:"table1",name:"餐桌",icon:" ",w:1400,d:800,color:"#DEB887"},
+  {id:"chair1",name:"餐椅",icon:" ",w:480,d:520,color:"#C4A882"},
+  {id:"cabinet1",name:"衣柜",icon:" ",w:1800,d:600,color:"#C4A882"},
+  {id:"toilet1",name:"马桶",icon:" ",w:400,d:700,color:"#F5F5F5"},
+  {id:"sink1",name:"洗手盆",icon:" ",w:600,d:500,color:"#FFFFFF"},
+  {id:"fridge1",name:"冰箱",icon:" ",w:900,d:800,color:"#C0C0C0"},
+];
+
+function buildFurnBar(){
+  const bar=document.getElementById("furn-bar");
+  FURN_CATALOG.forEach(f=>{
+    const chip=document.createElement("span");chip.className="furn-chip";
+    chip.innerHTML=`${f.icon} ${f.name}`;
+    chip.onclick=()=>{
+      saveState();
+      furniture.push({id:nextId++,name:f.name,cat:"",x:0,y:0,w:f.w,d:f.d,color:f.color});
+      render2D();rebuild3D();updateStatus();
+    };
+    bar.appendChild(chip);
+  });
+}
+
+
+// ===================== 快捷键系统 =====================
+var clipboardFurniture=null;
+var clipboardItem=null;
+document.addEventListener("keydown", function(e){
+  // 工具切换 1-6
+  if(!e.ctrlKey && !e.metaKey && !e.shiftKey){
+    const keys = {"1":"select","2":"wall","3":"door","4":"window","5":"dim","6":"room","7":"arc","8":"polyline"};
+    if(keys[e.key]){ e.preventDefault(); setTool(keys[e.key]); return; }
+  }
+  // Ctrl shortcuts
+  if(e.ctrlKey || e.metaKey){
+    switch(e.key){
+      case "c": if(selected&&selected.userData){clipboardFurniture=Object.assign({},selected.userData);document.getElementById("tool-status").textContent="  Copied: "+clipboardFurniture.name;e.preventDefault()}break;
+      case "v": if(clipboardFurniture){saveState();furniture.push({id:nextId++,name:clipboardFurniture.name,cat:"",x:(clipboardFurniture.x||0)+500,y:(clipboardFurniture.z||clipboardFurniture.y||0)+500,w:clipboardFurniture.w||1000,d:clipboardFurniture.d||800,color:clipboardFurniture.color});render2D();rebuild3D();updateStatus();document.getElementById("tool-status").textContent="  Pasted: "+clipboardFurniture.name;e.preventDefault()}break;
+      case "c": if(sel){clipboardItem={id:sel.id,x1:sel.x1,y1:sel.y1,x2:sel.x2,y2:sel.y2,thick:sel.thick,type:sel.type};document.getElementById("tool-status").textContent=" Copied wall";e.preventDefault()}break;
+      case "v": if(clipboardItem){saveState();var nid=nextId++;walls.push({id:nid,x1:clipboardItem.x1+1000,y1:clipboardItem.y1,x2:clipboardItem.x2+1000,y2:clipboardItem.y2,thick:clipboardItem.thick,type:clipboardItem.type});sel=walls[walls.length-1];saveState();render2D();rebuild3D();updateStatus();document.getElementById("tool-status").textContent=" Pasted wall";e.preventDefault()}break;
+      case "z": case "Z": e.shiftKey ? redo() : undo(); e.preventDefault(); break;
+      case "s": e.preventDefault(); saveDoc(); break;
+      case "o": e.preventDefault(); loadDoc(); break;
+    }
+    return;
+  }
+  // Other shortcuts
+  switch(e.key){
+    case "Delete": case "Backspace": if(sel){delWall();} break;
+    case "Escape": if(tool==="polyline"){finishPolyline()}else{wallDraw=null;} render2D(); document.getElementById("tool-status").textContent="已取消"; break;
+    case "+": case "=": cam.zoom*=1.2; render2D(); break;
+    case "-": cam.zoom/=1.2; render2D(); break;
+    case "Enter": if(tool==="polyline"){e.preventDefault();finishPolyline()}break;
+      case "f": case "F": zoomFit(); break;
+  }
+});
+
+// ===================== STATUS =====================
+function updateStatus(){
+  document.getElementById("tool-status").textContent=
+    `墙:${walls.length} 门:${doors.length} 窗:${windows.length} 房间:${rooms.length} 家具:${furniture.length}`;
+}
+
+// ===================== SAVE/LOAD =====================
+window.saveDoc=function(){
+  const d={walls,doors,windows,rooms,dims,furniture};
+  const a=document.createElement("a");a.download="cad_plan.json";
+  a.href=URL.createObjectURL(new Blob([JSON.stringify(d,null,2)],{type:"application/json"}));a.click();
+};
+window.loadDoc=function(){
+  const i=document.createElement("input");i.type="file";i.accept=".json";
+  i.onchange=async e=>{
+    const d=JSON.parse(await e.target.files[0].text());
+    walls=d.walls||[];doors=d.doors||[];windows=d.windows||[];
+    rooms=d.rooms||[];dims=d.dims||[];furniture=d.furniture||[];
+    saveState();render2D();rebuild3D();updateStatus();
+  };i.click();
+};
+window.exportDXF=function(){var d={walls:walls,doors:doors,windows:windows,rooms:rooms,furniture:furniture};fetch("/api/export_dxf",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(d)}).then(function(r){if(!r.ok)throw new Error("DXF export failed");return r.blob()}).then(function(b){var a=document.createElement("a");a.download="floorplan.dxf";a.href=URL.createObjectURL(b);a.click();document.getElementById("tool-status").textContent="  DXF exported!"}).catch(function(e){document.getElementById("tool-status").textContent="  DXF error: server not running";prompt("Copy this JSON and run: python server.py","python server.py");});};
+  const d={walls,doors,windows,furniture};
+  const a=document.createElement("a");a.download="cad_export.json";
+  a.href=URL.createObjectURL(new Blob([JSON.stringify(d,null,2)],{type:"application/json"}));a.click();
+  alert("JSON 数据已下载，运行:\\npython interior_run.py --input cad_export.json");
+};
+window.clearAll=function(){if(!confirm("确定清空所有？"))return;walls=[];doors=[];windows=[];rooms=[];dims=[];furniture=[];saveState();render2D();rebuild3D();updateStatus()};
+window.zoomFit=function(){cam.x=0;cam.y=0;cam.zoom=0.8;render2D()};
+
+// ===================== INIT =====================
+buildFurnBar();
+resize2D();
+saveState();
+
+// Demo: 画一个默认户型
+addWall(-5000,-5000,5000,-5000,240,"外墙");
+addWall(5000,-5000,5000,5000,240,"外墙");
+addWall(5000,5000,-5000,5000,240,"外墙");
+addWall(-5000,5000,-5000,-5000,240,"外墙");
+addWall(-5000,0,5000,0,150,"内墙");
+addWall(0,-5000,0,0,150,"内墙");
+detectRoom();
+// Doors
+addDoor(walls[0].id,3000,900);
+addDoor(walls[4].id,2000,900);
+addDoor(walls[1].id,3000,900);
+// Windows
+addWindow(walls[2].id,2500,1500);
+addWindow(walls[3].id,2000,1500);
+// Furniture
+furniture.push({id:nextId++,name:"双人床",cat:"",x:-2000,y:-2500,w:2000,d:1800,color:"#D2B48C"});
+furniture.push({id:nextId++,name:"沙发",cat:"",x:-1500,y:2500,w:2200,d:850,color:"#8B4513"});
+furniture.push({id:nextId++,name:"餐桌",cat:"",x:2000,y:2500,w:1400,d:800,color:"#DEB887"});
+saveState();
+render2D();rebuild3D();updateStatus();
+document.getElementById("tool-status").textContent="  默认户型已加载！试试左侧工具：画墙/放门/放窗/标注";
+
+
+// ===================== 状态栏增强 =====================
+window.updateStatusBar=function(){
+  const el = document.getElementById("tool-status");
+  if(el && !el.textContent.includes("快捷键")){
+    el.textContent = `墙:${walls.length} 门:${doors.length} 窗:${windows.length} 房间:${rooms.length} 家具:${furniture.length} | 缩放:${(cam.zoom*100).toFixed(0)}% | 快捷键: 1-6切工具 Ctrl+Z撤销 Del删除 Ctrl+S保存`;
+  }
+};
+// Override original updateStatus
+const origUpdate = updateStatus;
+updateStatus = function(){
+  if(origUpdate) origUpdate();
+  updateStatusBar();
+};
+
+
+// ===================== 测量工具 =====================
+let measureMode = false;
+let measureStart = null;
+window.toggleMeasure = function(){
+  measureMode = !measureMode;
+  if(measureMode){
+    setTool("select");
+    document.getElementById("tool-status").textContent = "  测量模式: 点击起点和终点测距";
+    c2.style.cursor = "crosshair";
+    measureStart = null;
+  } else {
+    c2.style.cursor = "";
+    document.getElementById("tool-status").textContent = "";
+  }
+};
+
+// Patch pointerdown for measure
+const origPointerDown = c2.onpointerdown;
+c2.addEventListener("pointerdown", function(e){
+  if(!measureMode) return;
+  const r=c2.getBoundingClientRect();
+  const wp=s2w(e.clientX-r.left,e.clientY-r.top);
+  if(!measureStart){
+    measureStart = wp;
+    // Draw start point
+    const ps = w2s(wp.x, wp.y);
+    ctx.beginPath(); ctx.arc(ps.x, ps.y, 5, 0, Math.PI*2);
+    ctx.fillStyle = "#ff6b6b"; ctx.fill();
+  }else{
+    // Draw line and show distance
+    const p1 = w2s(measureStart.x, measureStart.y);
+    const p2 = w2s(wp.x, wp.y);
+    const dist = Math.hypot(wp.x-measureStart.x, wp.y-measureStart.y);
+    ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y);
+    ctx.strokeStyle = "#ff6b6b"; ctx.lineWidth = 2; ctx.stroke();
+    const mid = {x:(p1.x+p2.x)/2, y:(p1.y+p2.y)/2};
+    ctx.fillStyle = "#ff6b6b"; ctx.font = "bold 13px sans-serif"; ctx.textAlign = "center";
+    ctx.fillText((dist/1000).toFixed(2)+"m", mid.x, mid.y-8);
+    measureStart = null;
+    setTimeout(()=>render2D(), 2000);
+  }
+});
+
+let gridVisible=true,snapEnabled=true;
+window.toggleGrid=function(){gridVisible=!gridVisible;render2D()};
+window.toggleSnap=function(){snapEnabled=!snapEnabled;render2D()};
+
+// ===================== 房间编辑 =====================
+window.editRoom=function(){
+  // Find room at center of view or selected room
+  var wp=s2w(c2.width/2,c2.height/2);
+  var closest=null, minDist=Infinity;
+  for(var i=0;i<rooms.length;i++){
+    var cx=0,cy=0;
+    for(var j=0;j<rooms[i].corners.length;j++){cx+=rooms[i].corners[j].x;cy+=rooms[i].corners[j].y;}
+    cx/=rooms[i].corners.length;cy/=rooms[i].corners.length;
+    var d=Math.hypot(wp.x-cx,wp.y-cy);
+    if(d<minDist){minDist=d;closest=i;}
+  }
+  if(closest===null||minDist>5000/cam.zoom)return;
+  var newName=prompt("房间名称:",rooms[closest].name);
+  if(newName&&newName.trim()){rooms[closest].name=newName.trim();render2D();rebuild3D();updateStatus();}
+};
+
+var autoSaveInterval=setInterval(function(){try{var d={walls:walls.slice(0,50),doors:doors.slice(0,20),windows:windows.slice(0,10),rooms:rooms.slice(0,20)};localStorage.setItem("cad_autosave",JSON.stringify(d))}catch(e){}},30000);
+window.recoverAutoSave=function(){try{var d=JSON.parse(localStorage.getItem("cad_autosave"));if(d&&d.walls&&d.walls.length>0){if(confirm("恢复自动保存的草图?")){walls=d.walls;doors=d.doors||[];windows=d.windows||[];rooms=d.rooms||[];saveState();render2D();rebuild3D();updateStatus()}}}catch(e){}};
+window.showHelp=function(){alert(" CAD v3.0\n\n1-6: 工具切换\nCtrl+Z: 撤销\nCtrl+C/V: 复制/粘贴墙\nDel: 删除\nF: 适配\n+/-: 缩放\n\n画墙: 点起点/终点\n门/窗: 点墙放置\n选择: 拖端点改尺寸\n\nPNG/SVG/PDF/DXF 导出\n图片: 描图底图\n生成: 自动户型");};
+window.cleanupWalls=function(){saveState();var merged=true;while(merged){merged=false;for(var i=0;i<walls.length&&!merged;i++){for(var j=i+1;j<walls.length&&!merged;j++){var w1=walls[i],w2=walls[j];var d11=Math.hypot(w1.x1-w2.x1,w1.y1-w2.y1);var d12=Math.hypot(w1.x1-w2.x2,w1.y1-w2.y2);var d21=Math.hypot(w1.x2-w2.x1,w1.y2-w2.y1);var d22=Math.hypot(w1.x2-w2.x2,w1.y2-w2.y2);var tol=50;if((d11<tol||d12<tol||d21<tol||d22<tol)&&Math.abs(w1.thick-w2.thick)<10){var len1=Math.hypot(w1.x2-w1.x1,w1.y2-w1.y1);var len2=Math.hypot(w2.x2-w2.x1,w2.y2-w2.y1);if(len2>len1){var tmp=w1;w1=w2;w2=tmp}if(d11<tol||d21<tol){if(d11<tol){w1.x1=w2.x2;w1.y1=w2.y2}else{w1.x2=w2.x2;w1.y2=w2.y2}}else{if(d12<tol){w1.x1=w2.x1;w1.y1=w2.y1}else{w1.x2=w2.x1;w1.y2=w2.y1}}walls.splice(j,1);merged=true}}}}}saveState();render2D();rebuild3D();updateStatus();};
+
+// ===================== 弧墙 =====================
+var wallsArc = [];
+
+window._addArcWall = function(x1,y1,x2,y2,cx,cy,thick,type){
+  var r=Math.hypot(cx-x1,cy-y1);
+  var sa=Math.atan2(y1-cy,x1-cx);
+  var ea=Math.atan2(y2-cy,x2-cx);
+  // Ensure counter-clockwise
+  if(sa>ea)ea+=Math.PI*2;
+  wallsArc.push({id:nextId++,x1,y1,x2,y2,cx,cy,radius:r,startAngle:sa,endAngle:ea,thick:thick||200,type:type||"内墙"});
+  saveState();render2D();rebuild3D();updateStatus();
+};
+
+var arcDrawState = null; // {x1,y1,x2,y2} collecting points
+
+// Arc wall tool added as "7" key
+
+// ===================== 填充图案 =====================
+window.hatchPatterns = {
+  // ANSI31: 45 degree parallel lines
+  ansi31: function(ctx,x,y,w,h,scale){
+    ctx.save();
+    ctx.beginPath();
+    for(var i=-h;i<w+h;i+=4*scale){
+      ctx.moveTo(x+i,y);ctx.lineTo(x+i+h,y+h);
+    }
+    ctx.strokeStyle="rgba(100,100,100,0.3)";ctx.lineWidth=0.5;
+    ctx.stroke();
+    ctx.restore();
+  },
+  // Wood grain: horizontal wavy lines
+  wood: function(ctx,x,y,w,h,scale){
+    ctx.save();
+    for(var i=0;i<h;i+=6*scale){
+      ctx.beginPath();
+      ctx.moveTo(x,y+i);
+      for(var j=0;j<w;j+=3){
+        ctx.lineTo(x+j,y+i+Math.sin(j*0.1)*1.5*scale);
+      }
+      ctx.strokeStyle="rgba(180,140,100,0.25)";ctx.lineWidth=0.5;
+      ctx.stroke();
+    }
+    ctx.restore();
+  },
+  // Tile: grid pattern
+  tile: function(ctx,x,y,w,h,scale){
+    ctx.save();
+    ctx.strokeStyle="rgba(150,150,150,0.2)";ctx.lineWidth=0.5;
+    for(var i=0;i<w;i+=20*scale){ctx.beginPath();ctx.moveTo(x+i,y);ctx.lineTo(x+i,y+h);ctx.stroke();}
+    for(var i=0;i<h;i+=20*scale){ctx.beginPath();ctx.moveTo(x,y+i);ctx.lineTo(x+w,y+i);ctx.stroke();}
+    ctx.restore();
+  },
+  // Concrete: random dots
+  concrete: function(ctx,x,y,w,h,scale){
+    ctx.save();
+    ctx.fillStyle="rgba(120,120,120,0.15)";
+    var seed=12345;
+    for(var i=0;i<50;i++){
+      seed=(seed*9301+49297)%233280;
+      var dx=seed/233280*w;
+      seed=(seed*9301+49297)%233280;
+      var dy=seed/233280*h;
+      seed=(seed*9301+49297)%233280;
+      var dr=seed/233280*3*scale+1;
+      ctx.beginPath();ctx.arc(x+dx,y+dy,dr,0,Math.PI*2);ctx.fill();
+    }
+    ctx.restore();
+  }
+};
+
+window.applyHatch=function(roomIdx,pattern){
+  if(roomIdx<0||roomIdx>=rooms.length)return;
+  rooms[roomIdx].hatch=pattern;
+  render2D();
+};
+
+// ===================== 图层线型 =====================
+var layerConfig = {
+  "外墙":{color:"rgba(200,200,220,0.8)",weight:3,dash:[]},
+  "内墙":{color:"rgba(200,200,220,0.5)",weight:2,dash:[]},
+  "门":{color:"rgba(67,233,123,0.8)",weight:1.5,dash:[]},
+  "窗":{color:"rgba(79,172,254,0.8)",weight:1.5,dash:[]},
+  "标注":{color:"rgba(255,107,107,0.8)",weight:1,dash:[]},
+  "房间":{color:"rgba(255,255,255,0.3)",weight:1,dash:[4,4]},
+  "家具":{color:"rgba(255,204,0,0.6)",weight:1,dash:[]},
+};
+
+window.setLayerLineType=function(layer,ltype){
+  if(!layerConfig[layer])return;
+  var dashes={solid:[],dashed:[6,3],dotted:[2,3],center:[12,4,2,4],dashdot:[6,3,1,3]};
+  layerConfig[layer].dash=dashes[ltype]||[];
+  render2D();
+};
+window.setLayerWeight=function(layer,w){
+  if(!layerConfig[layer])return;
+  layerConfig[layer].weight=Math.max(0.5,Math.min(5,w));
+  render2D();
+};
+
+// ===================== GB/T 50001-2017 国标图层 =====================
+var GBLAYERS = {
+  "A-WALL":    {name:"建筑-墙体",  color:"#FFFFFF", weight:0.50, ltype:"solid",   desc:"承重墙/外墙"},
+  "A-WALL-PART":{name:"建筑-隔墙",color:"#C8A0C8", weight:0.35, ltype:"solid",   desc:"隔断墙/内墙"},
+  "A-DOOR":    {name:"建筑-门",    color:"#43E97B", weight:0.25, ltype:"solid",   desc:"门"},
+  "A-WINDOW":  {name:"建筑-窗",    color:"#4FACFE", weight:0.25, ltype:"solid",   desc:"窗"},
+  "A-DIM":     {name:"建筑-尺寸",  color:"#FF6B6B", weight:0.18, ltype:"solid",   desc:"尺寸标注"},
+  "A-TEXT":    {name:"建筑-文字",  color:"#FFFFFF", weight:0.18, ltype:"solid",   desc:"文字标注"},
+  "A-FURN":    {name:"建筑-家具",  color:"#FFCC00", weight:0.18, ltype:"dashed",  desc:"家具布置"},
+  "A-HATCH":   {name:"建筑-填充",  color:"#888888", weight:0.13, ltype:"solid",   desc:"填充图案"},
+  "A-AXIS":    {name:"建筑-轴线",  color:"#FF4444", weight:0.13, ltype:"center",  desc:"定位轴线"},
+  "A-COLUMN":  {name:"建筑-柱",    color:"#888888", weight:0.50, ltype:"solid",   desc:"结构柱"},
+};
+
+window.setGBStandard = function(){
+  // Apply GB/T layer colors to rendering
+  for(var i=0;i<walls.length;i++){
+    if(walls[i].type==="外墙")walls[i].layer="A-WALL";
+    else walls[i].layer="A-WALL-PART";
+  }
+  render2D();
+  document.getElementById("tool-status").textContent="  GB/T 50001-2017 标准已应用";
+};
+
+// ===================== 右键菜单 =====================
+var contextMenu = null;
+
+c2.addEventListener("contextmenu", function(e){
+  e.preventDefault();
+  if(contextMenu){document.body.removeChild(contextMenu);contextMenu=null;}
+  var r=c2.getBoundingClientRect();
+  var mx=e.clientX-r.left, my=e.clientY-r.top;
+  var menu = document.createElement("div");
+  menu.style.cssText = "position:fixed;left:"+(e.clientX)+"px;top:"+(e.clientY)+"px;background:rgba(30,30,58,0.97);border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:4px 0;z-index:9999;min-width:120px;backdrop-filter:blur(8px);";
+  var items = [];
+  if(sel){
+    items.push({label:" 删除墙", action:delWall});
+    items.push({label:" 切换内外", action:toggleWallType});
+    items.push({label:" 分割墙", action:splitWall});
+    items.push({label:" 复制墙", action:function(){if(sel){clipboardItem={id:sel.id,x1:sel.x1+500,y1:sel.y1,x2:sel.x2+500,y2:sel.y2,thick:sel.thick,type:sel.type};document.getElementById("tool-status").textContent="  Copied";}}});
+    items.push({label:"---",action:null});
+  }
+  items.push({label:" 全选", action:function(){sel=walls.length>0?walls[0]:null;render2D();}});
+  items.push({label:" 清空全部", action:clearAll});
+  items.push({label:" 适应画面", action:zoomFit});
+  items.push({label:" 网格开关", action:toggleGrid});
+  items.push({label:" 吸附开关", action:toggleSnap});
+  items.push({label:" 极轴开关", action:togglePolar});
+  items.push({label:"---",action:null});
+  items.push({label:" 国标图层", action:setGBStandard});
+  items.push({label:" 线宽应用", action:applyLineWeights});
+  items.push({label:" CTB预览", action:showCTB});
+  items.push({label:"---",action:null});
+  items.push({label:" 保存JSON", action:saveDoc});
+  items.push({label:" 导出PNG", action:exportPNG});
+  items.push({label:" 导出SVG", action:exportSVG});
+  items.push({label:" 导出DXF", action:exportDXF});
+  for(var i=0;i<items.length;i++){
+    if(items[i].label==="---"){
+      var sep=document.createElement("div");
+      sep.style.cssText="height:1px;background:rgba(255,255,255,0.08);margin:3px 0;";
+      menu.appendChild(sep);
+    }else{
+      var item=document.createElement("div");
+      item.textContent=items[i].label;
+      item.style.cssText="padding:4px 12px;cursor:pointer;font-size:12px;color:rgba(255,255,255,0.8);transition:background 0.1s;";
+      item.onmouseenter=function(){this.style.background="rgba(102,126,234,0.2)";};
+      item.onmouseleave=function(){this.style.background="transparent";};
+      item.onclick=function(action){return function(){action();if(contextMenu){document.body.removeChild(contextMenu);contextMenu=null;}}}(items[i].action);
+      menu.appendChild(item);
+    }
+  }
+  document.body.appendChild(menu);
+  contextMenu=menu;
+});
+
+// Close context menu on click elsewhere
+document.addEventListener("click",function(){
+  if(contextMenu){document.body.removeChild(contextMenu);contextMenu=null;}
+});
+
+// ===================== 极轴追踪 =====================
+var polarActive = false;
+var polarAngles = [0, 45, 90, 135, 180, 225, 270, 315];
+
+window.togglePolar = function(){
+  polarActive = !polarActive;
+  document.getElementById("tool-status").textContent = polarActive ? "  极轴追踪: 开 (0/45/90/135)" : "  极轴追踪: 关";
+  render2D();
+};
+
+function snapToPolar(x1,y1,x2,y2){
+  if(!polarActive) return {x:x2,y:y2};
+  var dx=x2-x1, dy=y2-y1;
+  var angle=Math.atan2(dy,dx)*180/Math.PI;
+  if(angle<0)angle+=360;
+  var bestAngle=angle, bestDiff=360;
+  for(var i=0;i<polarAngles.length;i++){
+    var diff=Math.abs(angle-polarAngles[i]);
+    if(diff>180)diff=360-diff;
+    if(diff<bestDiff){bestDiff=diff;bestAngle=polarAngles[i];}
+  }
+  if(bestDiff<5){
+    // Snap to polar angle
+    var len=Math.hypot(dx,dy);
+    var rad=bestAngle*Math.PI/180;
+    return {x:x1+Math.cos(rad)*len, y:y1+Math.sin(rad)*len};
+  }
+  return {x:x2,y:y2};
+}
+
+// Override wall drawing to use polar snap
+
+// ===================== 专业线宽渲染 =====================
+var LINE_WEIGHTS = {
+  "A-WALL":    2.5, "A-WALL-PART": 1.5,
+  "A-DOOR":    1.0, "A-WINDOW":    1.0,
+  "A-DIM":     0.7, "A-TEXT":      0.5,
+  "A-FURN":    0.5, "A-HATCH":     0.3,
+  "A-AXIS":    0.3, "A-COLUMN":    2.0,
+};
+
+// Patch wall rendering to use layer weights
+window.applyLineWeights = function(){
+  for(var i=0;i<walls.length;i++){
+    var layer=walls[i].layer||(walls[i].type==="外墙"?"A-WALL":"A-WALL-PART");
+    walls[i]._weight=LINE_WEIGHTS[layer]||1.0;
+  }
+  render2D();
+  document.getElementById("tool-status").textContent="  专业线宽已应用";
+};
+
+// ===================== CTB 打印样式 =====================
+var CTB = {
+  color: {
+    "1":{name:"红色",weight:0.18,halftone:100},
+    "2":{name:"黄色",weight:0.25,halftone:80},
+    "3":{name:"绿色",weight:0.35,halftone:100},
+    "4":{name:"青色",weight:0.50,halftone:80},
+    "5":{name:"蓝色",weight:0.18,halftone:100},
+    "6":{name:"品红",weight:0.25,halftone:100},
+    "7":{name:"白色",weight:0.35,halftone:100},
+    "8":{name:"灰色",weight:0.13,halftone:60},
+  },
+  applyToLayer: function(layerName, colorIdx, weight, halftone){
+    if(!this.color[colorIdx])return;
+    this.color[colorIdx].weight=weight;
+    this.color[colorIdx].halftone=halftone;
+    render2D();
+  },
+  preview: function(){
+    render2D();
+    document.getElementById("tool-status").textContent="  CTB打印样式预览 (权重:"+
+      Object.values(this.color).map(function(c){return c.weight.toFixed(2)}).join(",")+")";
+  }
+};
+
+window.showCTB = function(){
+  var msg="CTB 打印样式表\n\n颜色→权重→灰度\n";
+  for(var k in CTB.color){
+    var c=CTB.color[k];
+    msg+=k+". "+c.name+" → "+c.weight.toFixed(2)+"mm → "+c.halftone+"%\n";
+  }
+  msg+="\n可通过 CTB.color[id].weight/halftone 自定义";
+  alert(msg);
+};
+
+// ===================== 多段线 =====================
+var polylinePts = []; // [{x,y}]
+
+// Enhanced setTool to handle polyline cleanup
+var origSetTool = setTool;
+setTool = function(t){
+  if(t!=="polyline" && polylinePts.length>1){polylinePts=[];}
+  origSetTool(t);
+};
+
+// Polyline pointer handler
+function handlePolylineClick(wp){
+  if(polylinePts.length===0){
+    // First point
+    polylinePts.push({x:wp.x,y:wp.y});
+    document.getElementById("tool-status").textContent="  多段线: 点第2点 (回车/Esc结束, 双击结束)";
+    render2D();
+    return true;
+  }
+  // Add point and create wall
+  var last = polylinePts[polylinePts.length-1];
+  var snap = snapEnabled ? (snapToEndpoint(wp,15/cam.zoom)||snapToMidpoint(wp,15/cam.zoom)||snapToGrid(wp)) : wp;
+  if(Math.hypot(snap.x-last.x,snap.y-last.y)>100){
+    polylinePts.push({x:snap.x,y:snap.y});
+    walls.push({id:nextId++,x1:last.x,y1:last.y,x2:snap.x,y2:snap.y,thick:200,type:"内墙"});
+    saveState();
+    render2D();
+    rebuild3D();
+    updateStatus();
+    document.getElementById("tool-status").textContent="  多段线: 已画"+(polylinePts.length-1)+"段, 继续点 / 结束";
+  }
+  return true;
+}
+
+// Finish polyline
+function finishPolyline(){
+  if(polylinePts.length<2)return;
+  polylinePts=[];
+  setTool("select");
+  document.getElementById("tool-status").textContent="  多段线结束";
+}
+
+// ===================== 偏移 =====================
+var offsetDist = 1000; // 1m default
+var offsetPreview = null; // {x1,y1,x2,y2}
+
+window.doOffset = function(){
+  if(!sel){
+    document.getElementById("tool-status").textContent="  偏移: 先选中要偏移的墙";
+    return;
+  }
+  var dx=sel.x2-sel.x1, dy=sel.y2-sel.y1;
+  var len=Math.hypot(dx,dy);
+  if(len<1)return;
+  var nx=-dy/len*offsetDist, ny=dx/len*offsetDist;
+  saveState();
+  walls.push({id:nextId++,x1:sel.x1+nx,y1:sel.y1+ny,x2:sel.x2+nx,y2:sel.y2+ny,thick:sel.thick,type:sel.type});
+  saveState();render2D();rebuild3D();updateStatus();
+  document.getElementById("tool-status").textContent="  偏移: 已创建平行墙 (距离"+offsetDist+"mm)";
+};
+
+window.setOffsetDist = function(d){
+  offsetDist = Math.max(100, Math.min(10000, d));
+  document.getElementById("tool-status").textContent="  偏移距离: "+offsetDist+"mm";
+};
+
+// ===================== 触屏适配 =====================
+// Touch-to-mouse translation for better mobile support
+// Also add pinch zoom
+var touchDist = 0;
+
+document.addEventListener("touchstart", function(e){
+  if(e.touches.length===1){
+    // Forward to pointer handlers - create a synthetic event
+    var touch = e.touches[0];
+    var me = new MouseEvent("pointerdown", {
+      clientX: touch.clientX, clientY: touch.clientY,
+      bubbles: true, cancelable: true
+    });
+    e.target.dispatchEvent(me);
+  } else if(e.touches.length===2){
+    touchDist = Math.hypot(
+      e.touches[0].clientX-e.touches[1].clientX,
+      e.touches[0].clientY-e.touches[1].clientY
+    );
+  }
+}, {passive: true});
+
+document.addEventListener("touchmove", function(e){
+  if(e.touches.length===1 && tool!=="select"){
+    e.preventDefault();
+    var touch = e.touches[0];
+    var me = new MouseEvent("pointermove", {
+      clientX: touch.clientX, clientY: touch.clientY,
+      bubbles: true, cancelable: true
+    });
+    e.target.dispatchEvent(me);
+  } else if(e.touches.length===2){
+    e.preventDefault();
+    var newDist = Math.hypot(
+      e.touches[0].clientX-e.touches[1].clientX,
+      e.touches[0].clientY-e.touches[1].clientY
+    );
+    var scale = newDist / touchDist;
+    cam.zoom *= scale;
+    cam.zoom = Math.max(0.05, Math.min(10, cam.zoom));
+    touchDist = newDist;
+    render2D();
+  }
+}, {passive: false});
+
+document.addEventListener("touchend", function(e){
+  if(e.changedTouches.length===1 && e.touches.length===0){
+    var touch = e.changedTouches[0];
+    var me = new MouseEvent("pointerup", {
+      clientX: touch.clientX, clientY: touch.clientY,
+      bubbles: true, cancelable: true
+    });
+    e.target.dispatchEvent(me);
+  }
+}, {passive: true});
+
+// Responsive UI - make side panels collapsible
+function checkMobile(){
+  var isMobile = window.innerWidth < 768;
+  var leftPanel = document.getElementById("left-panel");
+  var sidebar = document.getElementById("sidebar");
+  if(isMobile){
+    leftPanel.style.width = "100%";
+    leftPanel.style.height = "50%";
+    sidebar.style.display = "none";
+  } else {
+    leftPanel.style.width = "";
+    leftPanel.style.height = "";
+    sidebar.style.display = "";
+  }
+}
+window.addEventListener("resize", checkMobile);
+setTimeout(checkMobile, 500);
+// ===================== ANIMATION LOOP =====================
+function animate(){requestAnimationFrame(animate);controls3.update();renderer3.render(scene,camera3)}
+animate();
+window.changeFloorTexture=function(name){
+  if(!floor3)return;
+  const newMat=loadPBRMaterial(name,{roughness:0.7});
+  floor3.material.dispose();
+  floor3.material=newMat;
+  floor3.material.needsUpdate=true;
+};
+window.toggleLayerPanel=function(){
+  const p=document.getElementById("layer-panel");
+  p.style.display=p.style.display==="none"?"block":"none";
+  if(p.style.display==="block"){
+    const layerTypes=["外墙","内墙","门","窗","标注","房间","家具"];
+    p.innerHTML=`<div style="font-weight:600;margin-bottom:4px;color:rgba(255,255,255,0.7)"> 图层</div>`+
+      layerTypes.map(t=>`<label style="display:flex;align-items:center;gap:4px;padding:2px 0;cursor:pointer">
+        <input type="checkbox" checked onchange="toggleLayer('${t}',this.checked)" style="accent-color:#667eea">
+        <span>${t}</span></label>`).join("");
+  }
+};
+window.toggleLayer=function(type,visible){
+  // Simple visibility toggle - re-render without that type
+  render2D();
+  // Force re-render without layer - we just flag it
+  window._hiddenLayers = window._hiddenLayers || {};
+  window._hiddenLayers[type] = !visible;
+  render2D();
+};
+console.log(" CAD 2D 编辑器启动完成");
+</script>
+
+<!-- ===================== 参数化户型生成对话框 ===================== -->
+<div id="gen-modal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center">
+<div style="background:#1e1e3a;border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:24px;width:420px;max-height:80vh;overflow-y:auto">
+  <h3 style="margin-bottom:16px"> 参数化户型生成</h3>
+  
+  <label style="font-size:11px;color:rgba(255,255,255,0.5);display:block;margin-top:8px">整体尺寸 (mm)</label>
+  <div style="display:flex;gap:8px">
+    <input id="gw" value="10000" style="flex:1;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:4px;padding:6px 8px;color:#fff;font-size:13px"> <span style="color:rgba(255,255,255,0.3);line-height:32px">×</span>
+    <input id="gd" value="8000" style="flex:1;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:4px;padding:6px 8px;color:#fff;font-size:13px">
+  </div>
+
+  <label style="font-size:11px;color:rgba(255,255,255,0.5);display:block;margin-top:12px">房间配置</label>
+  <div id="room-configs">
+    <div class="room-row" style="display:flex;gap:4px;margin-bottom:4px">
+      <input value="客厅" style="width:70px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.08);border-radius:3px;padding:4px 6px;color:#fff;font-size:11px">
+      <input value="25" style="width:50px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.08);border-radius:3px;padding:4px 6px;color:#fff;font-size:11px" placeholder="m2">
+      <select style="flex:1;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.08);border-radius:3px;padding:4px 6px;color:#fff;font-size:11px">
+        <option>客厅</option><option>卧室</option><option>厨房</option><option>卫生间</option><option>餐厅</option><option>书房</option><option>阳台</option>
+      </select>
+    </div>
+  </div>
+  <button onclick="addRoomRow()" style="background:transparent;border:1px dashed rgba(255,255,255,0.2);border-radius:3px;padding:3px 10px;color:rgba(255,255,255,0.5);cursor:pointer;font-size:11px;margin-top:4px">+ 添加房间</button>
+
+  <div style="margin-top:16px;display:flex;gap:8px;justify-content:flex-end">
+    <button onclick="closeGenModal()" style="padding:6px 16px;border:1px solid rgba(255,255,255,0.15);border-radius:4px;background:transparent;color:#fff;cursor:pointer;font-size:12px">取消</button>
+    <button onclick="generatePlan()" style="padding:6px 16px;border:none;border-radius:4px;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;cursor:pointer;font-size:12px"> 生成布局</button>
+  </div>
+</div>
+</div>
+
+<script>
+// ===================== 参数化户型生成器 =====================
+// 基于递归二分切割算法
+
+function addRoomRow(name, area, type) {
+  const cont = document.getElementById("room-configs");
+  const div = document.createElement("div");
+  div.className = "room-row";
+  div.style.cssText = "display:flex;gap:4px;margin-bottom:4px";
+  div.innerHTML = [
+    '<input value="'+(name||"房间")+'" style="width:70px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.08);border-radius:3px;padding:4px 6px;color:#fff;font-size:11px">',
+    '<input value="'+(area||"10")+'" style="width:50px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.08);border-radius:3px;padding:4px 6px;color:#fff;font-size:11px" placeholder="m2">',
+    '<select style="flex:1;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.08);border-radius:3px;padding:4px 6px;color:#fff;font-size:11px">',
+    '<option>客厅</option><option>卧室</option><option>厨房</option><option>卫生间</option><option>餐厅</option><option>书房</option><option>阳台</option></select>',
+    '<button onclick="this.parentElement.remove()" style="background:transparent;border:none;color:#e74c3c;cursor:pointer;font-size:14px">×</button>',
+  ].join("");
+  if(type) div.querySelector("select").value = type;
+  cont.appendChild(div);
+}
+
+// 初始房间配置
+addRoomRow("客厅", 25, "客厅");
+addRoomRow("主卧", 18, "卧室");
+addRoomRow("次卧", 14, "卧室");
+addRoomRow("厨房", 8, "厨房");
+addRoomRow("卫生间", 5, "卫生间");
+addRoomRow("餐厅", 12, "餐厅");
+
+window.openGenModal = function() {
+  document.getElementById("gen-modal").style.display = "flex";
+};
+window.closeGenModal = function() {
+  document.getElementById("gen-modal").style.display = "none";
+};
+
+window.generatePlan = function() {
+  const totalW = parseFloat(document.getElementById("gw").value) || 10000;
+  const totalD = parseFloat(document.getElementById("gd").value) || 8000;
+
+  // Read room configs
+  const rows = document.querySelectorAll("#room-configs .room-row");
+  const rooms_config = [];
+  let totalTarget = 0;
+  for(const row of rows){
+    const inputs = row.querySelectorAll("input");
+    const sel = row.querySelector("select");
+    if(!inputs[0]||!inputs[1])continue;
+    const name = inputs[0].value;
+    const area = parseFloat(inputs[1].value) || 10;
+    const type = sel ? sel.value : "房间";
+    rooms_config.push({name, area, type});
+    totalTarget += area;
+  }
+
+  if(rooms_config.length < 2) { alert("至少需要2个房间"); return; }
+
+  // Scale areas to fit total
+  const totalArea = (totalW * totalD) / 1e6;
+  const scale = totalArea / totalTarget;
+  rooms_config.forEach(r => r.targetArea = r.area * scale);
+
+  // Layout algorithm: grid-based slicing
+  // Sort rooms by area (descending)
+  rooms_config.sort((a,b) => b.targetArea - a.targetArea);
+
+  // Start with whole space
+  const spaces = [{x:0, y:0, w:totalW, d:totalD, rooms: [...rooms_config]}];
+
+  const final_rooms = [];
+
+  function splitSpace(space, room) {
+    const rArea = room.targetArea * 1e6;
+    const currentArea = space.w * space.d;
+    if(currentArea <= rArea * 1.2) {
+      // Room fits
+      final_rooms.push({name: room.name, type: room.type, x: space.x, y: space.y, w: space.w, d: space.d});
+      return [];
+    }
+    // Need to split - allocate portion for this room
+    const ratio = rArea / currentArea;
+    // Decide split direction (wider side splits)
+    if(space.w >= space.d) {
+      // Vertical split
+      const roomW = space.w * Math.sqrt(ratio);
+      final_rooms.push({name: room.name, type: room.type, x: space.x, y: space.y, w: Math.max(roomW, 1500), d: space.d});
+      return [{x: space.x + Math.max(roomW, 1500), y: space.y, w: space.w - Math.max(roomW, 1500), d: space.d}];
+    } else {
+      // Horizontal split
+      const roomD = space.d * Math.sqrt(ratio);
+      final_rooms.push({name: room.name, type: room.type, x: space.x, y: space.y, w: space.w, d: Math.max(roomD, 1500)});
+      return [{x: space.x, y: space.y + Math.max(roomD, 1500), w: space.w, d: space.d - Math.max(roomD, 1500)}];
+    }
+  }
+
+  let remaining = rooms_config.slice();
+  let currentSpaces = [{x:0, y:0, w:totalW, d:totalD}];
+
+  for(const room of remaining) {
+    if(currentSpaces.length === 0) break;
+    // Find the best space for this room
+    const space = currentSpaces.shift();
+    const newSpaces = splitSpace(space, room);
+    currentSpaces.push(...newSpaces);
+  }
+
+  // Remaining space becomes hallway
+  for(const s of currentSpaces) {
+    if(s.w > 800 && s.d > 800) {
+      final_rooms.push({name: "过道", type: "过道", x: s.x, y: s.y, w: s.w, d: s.d});
+    }
+  }
+
+  // Generate walls from rooms
+  const newWalls = [];
+  const newRooms = [];
+  const newDoors = [];
+  const newWindows = [];
+
+  const colors = {"客厅":"#667eea","卧室":"#f093fb","厨房":"#43e97b","卫生间":"#fa709a","餐厅":"#764ba2","书房":"#4facfe","阳台":"#84fab0","过道":"#a8a8a8"};
+
+  for(const r of final_rooms) {
+    // Room polygon
+    const corners = [
+      {x: r.x, y: r.y},
+      {x: r.x + r.w, y: r.y},
+      {x: r.x + r.w, y: r.y + r.d},
+      {x: r.x, y: r.y + r.d},
+    ];
+    const area_m2 = (r.w * r.d) / 1e6;
+    newRooms.push({
+      id: nextId++, name: r.name, type: r.type,
+      corners: corners,
+      color: colors[r.type] || "#888888",
+      area: Math.round(area_m2 * 10) / 10
+    });
+
+    // Walls (only exterior - interior shared walls handled by adjacency)
+    const ws = [
+      {x1:r.x,y1:r.y,x2:r.x+r.w,y2:r.y},
+      {x1:r.x+r.w,y1:r.y,x2:r.x+r.w,y2:r.y+r.d},
+      {x1:r.x+r.w,y1:r.y+r.d,x2:r.x,y2:r.y+r.d},
+      {x1:r.x,y1:r.y+r.d,x2:r.x,y2:r.y},
+    ];
+    for(const w of ws) {
+      // Check if wall already exists (within tolerance)
+      let found = false;
+      for(const ew of newWalls) {
+        const d1 = Math.hypot(ew.x1-w.x1, ew.y1-w.y1) + Math.hypot(ew.x2-w.x2, ew.y2-w.y2);
+        const d2 = Math.hypot(ew.x1-w.x2, ew.y1-w.y2) + Math.hypot(ew.x2-w.x1, ew.y2-w.y1);
+        if(d1 < 50 || d2 < 50) { found = true; break; }
+      }
+      if(!found) {
+        const dx = w.x2-w.x1, dy = w.y2-w.y1;
+        const len = Math.hypot(dx, dy);
+        if(len > 100) {
+          newWalls.push({id: nextId++, x1:w.x1, y1:w.y1, x2:w.x2, y2:w.y2,
+            thick: (w.x1===0||w.x1===totalW||w.y1===0||w.y1===totalD||w.x2===0||w.x2===totalW||w.y2===0||w.y2===totalD) ? 240 : 150,
+            type: (w.x1===0||w.x1===totalW||w.y1===0||w.y1===totalD||w.x2===0||w.x2===totalW||w.y2===0||w.y2===totalD) ? "外墙" : "内墙"
+          });
+        }
+      }
+    }
+  }
+
+  // Add doors (one per room, on the longest wall)
+  for(const r of final_rooms) {
+    const ws = [
+      {x1:r.x,y1:r.y,x2:r.x+r.w,y2:r.y, side:"top"},
+      {x1:r.x+r.w,y1:r.y,x2:r.x+r.w,y2:r.y+r.d, side:"right"},
+      {x1:r.x+r.w,y1:r.y+r.d,x2:r.x,y2:r.y+r.d, side:"bottom"},
+      {x1:r.x,y1:r.y+r.d,x2:r.x,y2:r.y, side:"left"},
+    ];
+    // Find the wall that connects to another room or is exterior
+    for(const w of ws) {
+      const dx = w.x2-w.x1, dy = w.y2-w.y1;
+      const len = Math.hypot(dx, dy);
+      if(len > 2000) {
+        const pos = len * 0.3;
+        // Find matching wall
+        let wallId = null;
+        for(const nw of newWalls) {
+          const d1 = Math.hypot(nw.x1-w.x1, nw.y1-w.y1) + Math.hypot(nw.x2-w.x2, nw.y2-w.y2);
+          const d2 = Math.hypot(nw.x1-w.x2, nw.y1-w.y2) + Math.hypot(nw.x2-w.x1, nw.y2-w.y1);
+          if(d1 < 50 || d2 < 50) { wallId = nw.id; break; }
+        }
+        if(wallId && len > 1500) {
+          newDoors.push({id: nextId++, wallId, pos, width: 900});
+          break;
+        }
+      }
+    }
+  }
+
+  // Clear and load
+  if(!confirm("将清空当前绘图并加载生成户型，确定？")) return;
+
+  walls.length = 0; doors.length = 0; windows.length = 0;
+  rooms.length = 0; dims.length = 0; furniture.length = 0;
+
+  newWalls.forEach(w => walls.push(w));
+  newDoors.forEach(d => doors.push(d));
+  newRooms.forEach(r => rooms.push(r));
+
+  saveState();
+  closeGenModal();
+  render2D();
+  rebuild3D();
+  updateStatus();
+  zoomFit();
+  document.getElementById("tool-status").textContent = ` 户型已生成: ${rooms.length}个房间`;
+
+  // Add furniture suggestions
+  for(const r of final_rooms) {
+    if(r.type === "卧室") {
+      furniture.push({id:nextId++,name:"双人床",cat:"",x:r.x+r.w*0.3,y:r.y+r.d*0.4,w:2000,d:1800,color:"#D2B48C"});
+      furniture.push({id:nextId++,name:"衣柜",cat:"",x:r.x+r.w*0.8,y:r.y+r.d*0.2,w:1800,d:600,color:"#C4A882"});
+    } else if(r.type === "客厅") {
+      furniture.push({id:nextId++,name:"沙发",cat:"",x:r.x+r.w*0.3,y:r.y+r.d*0.7,w:2200,d:850,color:"#8B4513"});
+      furniture.push({id:nextId++,name:"茶几",cat:"",x:r.x+r.w*0.5,y:r.y+r.d*0.5,w:1200,d:600,color:"#D2691E"});
+      furniture.push({id:nextId++,name:"电视柜",cat:"",x:r.x+r.w*0.5,y:r.y+r.d*0.15,w:1800,d:400,color:"#3C3C3C"});
+    } else if(r.type === "餐厅") {
+      furniture.push({id:nextId++,name:"餐桌",cat:"",x:r.x+r.w*0.5,y:r.y+r.d*0.5,w:1400,d:800,color:"#DEB887"});
+      furniture.push({id:nextId++,name:"餐椅",cat:"",x:r.x+r.w*0.35,y:r.y+r.d*0.65,w:480,d:520,color:"#C4A882"});
+      furniture.push({id:nextId++,name:"餐椅",cat:"",x:r.x+r.w*0.65,y:r.y+r.d*0.65,w:480,d:520,color:"#C4A882"});
+    } else if(r.type === "厨房") {
+      furniture.push({id:nextId++,name:"冰箱",cat:"",x:r.x+r.w*0.85,y:r.y+r.d*0.5,w:900,d:800,color:"#C0C0C0"});
+    } else if(r.type === "卫生间") {
+      furniture.push({id:nextId++,name:"马桶",cat:"",x:r.x+r.w*0.3,y:r.y+r.d*0.3,w:400,d:700,color:"#F5F5F5"});
+      furniture.push({id:nextId++,name:"洗手盆",cat:"",x:r.x+r.w*0.7,y:r.y+r.d*0.7,w:600,d:500,color:"#FFFFFF"});
+    }
+  }
+  saveState();
+  render2D();
+  rebuild3D();
+  updateStatus();
+};
+
+// Add generate button to header
+document.addEventListener("DOMContentLoaded", function() {
+  const header = document.getElementById("header");
+  if(header) {
+    const genBtn = document.createElement("button");
+    genBtn.className = "btn btn-p";
+    genBtn.innerHTML = " 生成";
+    genBtn.onclick = window.openGenModal;
+    const exportBtn = header.querySelector('[onclick="exportDXF()"]');
+    if(exportBtn) header.insertBefore(genBtn, exportBtn);
+    else header.appendChild(genBtn);
+  }
+});
+</script>
+
+</body>
+</html>

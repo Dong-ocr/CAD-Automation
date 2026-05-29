@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>AI CAD 设计助手</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#0b1120;color:#e2e8f0;overflow-x:hidden}
+.header{background:linear-gradient(135deg,#0f172a,#1e293b);padding:24px 20px;text-align:center;border-bottom:1px solid #1e3a5f}
+.header h1{font-size:28px;background:linear-gradient(135deg,#60a5fa,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.header p{color:#94a3b8;font-size:14px;margin-top:4px}
+.container{max-width:900px;margin:0 auto;padding:20px}
+.card{background:#1e293b;border:1px solid #334155;border-radius:14px;padding:20px 24px;margin-bottom:16px}
+.card h2{font-size:16px;margin-bottom:12px;color:#e2e8f0}
+textarea{width:100%;padding:12px;background:#0f172a;border:1px solid #334155;border-radius:10px;color:#e2e8f0;font-size:14px;min-height:80px;outline:none;resize:vertical;transition:.2s}
+textarea:focus{border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,.15)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:12px 28px;border-radius:10px;font-size:15px;font-weight:600;border:none;cursor:pointer;transition:.2s;width:100%}
+.btn-primary{background:linear-gradient(135deg,#3b82f6,#8b5cf6);color:#fff}
+.btn-primary:hover{transform:translateY(-1px);box-shadow:0 8px 25px rgba(59,130,246,.3)}
+.btn-primary:disabled{opacity:.5;transform:none;cursor:not-allowed}
+.status{display:none;padding:12px 16px;border-radius:10px;margin-top:12px;font-size:14px}
+.status.loading{display:block;background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.3);color:#93c5fd}
+.status.success{display:block;background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.3);color:#6ee7b7}
+.status.error{display:block;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);color:#fca5a5}
+.preview-wrap{display:none;margin-top:16px}
+.preview-wrap.show{display:block}
+#canvas-container{width:100%;height:500px;border-radius:12px;overflow:hidden;background:#0f172a;border:1px solid #334155;position:relative}
+#canvas-container canvas{display:block}
+.spin-badge{position:absolute;bottom:12px;right:12px;background:rgba(0,0,0,.6);color:#94a3b8;font-size:12px;padding:4px 12px;border-radius:20px;backdrop-filter:blur(4px);pointer-events:none}
+.info-bar{display:flex;gap:12px;flex-wrap:wrap;margin-top:12px;padding:12px;background:#0f172a;border-radius:10px;border:1px solid #334155}
+.info-bar .item{flex:1;min-width:100px;text-align:center}
+.info-bar .item .label{font-size:11px;color:#64748b;text-transform:uppercase}
+.info-bar .item .value{font-size:18px;font-weight:700;color:#e2e8f0;margin-top:2px}
+.download-bar{display:flex;gap:8px;margin-top:12px}
+.download-bar a{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:10px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#94a3b8;text-decoration:none;font-size:13px;transition:.2s}
+.download-bar a:hover{background:#1e293b;border-color:#3b82f6;color:#fff}
+.examples{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.examples button{padding:6px 14px;background:#0f172a;border:1px solid #334155;border-radius:6px;font-size:12px;cursor:pointer;color:#94a3b8;transition:.2s}
+.examples button:hover{background:#1e293b;border-color:#3b82f6;color:#fff}
+.loader{display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite;vertical-align:middle;margin-right:6px}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div class="header"><h1>🏗️ AI CAD 设计助手</h1><p>说出你的需求，AI 自动生成 3D 户型 + CAD 施工图</p></div>
+<div class="container">
+<div class="card"><h2>📝 描述你的设计需求</h2>
+<textarea id="prompt" placeholder="例如：两室一厅 95平米 现代简约风格，主卧带衣帽间..."></textarea>
+<div class="examples">
+<button onclick="setPrompt('两室一厅 95平米 现代风格')">🏠 两室一厅 95m²</button>
+<button onclick="setPrompt('三室两厅 120平米 新中式风格')">🏡 三室两厅 120m²</button>
+<button onclick="setPrompt('一室一厅 50平米 北欧风格')">🏢 一室一厅 50m²</button>
+</div></div>
+<button class="btn btn-primary" id="submitBtn" onclick="submitDesign()">🚀 AI 开始设计</button>
+<div class="status" id="status"></div>
+<div class="preview-wrap" id="previewWrap">
+<div class="card" style="padding:0;overflow:hidden;border:1px solid #334155">
+<div id="canvas-container"><div class="spin-badge">🔄 自动旋转</div></div></div>
+<div class="info-bar" id="infoBar"></div>
+<div class="download-bar" id="downloadBar"></div></div></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+// ===== 3D Scene =====
+let scene, camera, renderer, controls, animId, particles;
+let isInteracting = false, autoRotateSpeed = 0.008;
+
+function init3D(data){
+    const container = document.getElementById('canvas-container');
+    const w = container.clientWidth || 800;
+    const h = 500;
+
+    // Clear old scene
+    while(container.firstChild) container.removeChild(container.firstChild);
+    if(animId) cancelAnimationFrame(animId);
+
+    // Setup scene
+    scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x070b17);
+    scene.fog = new THREE.FogExp2(0x070b17, 0.00008);
+
+    camera = new THREE.PerspectiveCamera(40, w/h, 1, 10000);
+    camera.position.set(2500, 3500, 4500);
+
+    renderer = new THREE.WebGLRenderer({antialias:true, alpha:true});
+    renderer.setSize(w, h);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.2;
+    container.appendChild(renderer.domElement);
+
+    controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+    controls.autoRotate = true;
+    controls.autoRotateSpeed = 2.5;
+    controls.maxPolarAngle = Math.PI / 2.3;
+    controls.minDistance = 1500;
+    controls.maxDistance = 12000;
+    controls.target.set(0, 200, 0);
+
+    // Track user interaction to pause auto-rotation
+    renderer.domElement.addEventListener('pointerdown', function(){ isInteracting = true; });
+    renderer.domElement.addEventListener('pointerup', function(){ 
+        setTimeout(function(){ isInteracting = false; }, 2000);
+    });
+
+    // ===== Lighting =====
+    const ambient = new THREE.AmbientLight(0x222244, 0.6);
+    scene.add(ambient);
+    
+    const hemi = new THREE.HemisphereLight(0x4488ff, 0x002244, 0.8);
+    scene.add(hemi);
+
+    const dirLight = new THREE.DirectionalLight(0xffeedd, 1.8);
+    dirLight.position.set(5000, 8000, 3000);
+    dirLight.castShadow = true;
+    dirLight.shadow.mapSize.width = 2048;
+    dirLight.shadow.mapSize.height = 2048;
+    dirLight.shadow.camera.near = 1;
+    dirLight.shadow.camera.far = 20000;
+    dirLight.shadow.camera.left = -8000;
+    dirLight.shadow.camera.right = 8000;
+    dirLight.shadow.camera.top = 8000;
+    dirLight.shadow.camera.bottom = -8000;
+    scene.add(dirLight);
+
+    const fillLight = new THREE.DirectionalLight(0x8888ff, 0.3);
+    fillLight.position.set(-3000, 3000, -2000);
+    scene.add(fillLight);
+
+    const rimLight = new THREE.DirectionalLight(0xff8844, 0.2);
+    rimLight.position.set(-2000, 1000, -5000);
+    scene.add(rimLight);
+
+    // ===== Ground Grid (cosmic style) =====
+    const gridHelper = new THREE.GridHelper(16000, 40, 0x1a3a6a, 0x0a1a3a);
+    gridHelper.position.y = -5;
+    scene.add(gridHelper);
+
+    // Glow ring on ground
+    const ringGeo = new THREE.RingGeometry(2000, 8000, 64);
+    const ringMat = new THREE.MeshBasicMaterial({
+        color: 0x1a3a6a,
+        transparent: true,
+        opacity: 0.08,
+        side: THREE.DoubleSide
+    });
+    const ring = new THREE.Mesh(ringGeo, ringMat);
+    ring.rotation.x = -Math.PI / 2;
+    ring.position.y = 1;
+    scene.add(ring);
+
+    // ===== Parse rooms =====
+    const roomNames = (data.rooms && data.rooms.length) ? data.rooms : ['客厅','卧室','厨房','卫生间'];
+    const style = data.style || '现代';
+    const totalArea = data.total_area || 80;
+
+    // Layout generator
+    const layouts = [
+        [{x:0,z:0,w:5000,d:6000},{x:5500,z:0,w:4000,d:4000},{x:5500,z:4500,w:4000,d:3500},{x:0,z:6500,w:5000,d:3000}],
+        [{x:0,z:0,w:6000,d:5000},{x:6500,z:0,w:3500,d:3500},{x:0,z:5500,w:3500,d:3500},{x:4000,z:5500,w:4000,d:3500}],
+        [{x:0,z:0,w:4000,d:5000},{x:4500,z:0,w:3000,d:3000},{x:0,z:5500,w:4000,d:3000}]
+    ];
+    const colors = {客厅:0x3b82f6,卧室:0x8b5cf6,厨房:0x10b981,卫生间:0xf472b6,餐厅:0xf59e0b,阳台:0x06b6d4,书房:0xfbbf24,衣帽间:0x6366f1};
+    const layout = layouts[Math.min(roomNames.length, 3)];
+
+    const wallH = 2800, wallT = 100;
+    let allMeshes = [];
+
+    for(let i=0; i<Math.max(roomNames.length, layout.length); i++){
+        const r = layout[i] || {x:-2000+Math.random()*4000, z:-2000+Math.random()*4000, w:3000, d:3000};
+        const name = roomNames[i] || r.name || '房间';
+        const color = colors[name] || 0x64748b;
+        const cx = r.x + r.w/2, cz = r.z + r.d/2;
+
+        // === Floor with glow edge ===
+        const floorGeo = new THREE.BoxGeometry(r.w-20, 30, r.d-20);
+        const floorMat = new THREE.MeshStandardMaterial({
+            color: color,
+            roughness: 0.3,
+            metalness: 0.2,
+            transparent: true,
+            opacity: 0.75,
+            emissive: color,
+            emissiveIntensity: 0.05
+        });
+        const floor = new THREE.Mesh(floorGeo, floorMat);
+        floor.position.set(cx, 5, cz);
+        floor.receiveShadow = true;
+        scene.add(floor);
+        allMeshes.push(floor);
+
+        // Edge glow ring
+        const edgeGeo = new THREE.EdgesGeometry(floorGeo);
+        const edgeMat = new THREE.LineBasicMaterial({
+            color: color,
+            transparent: true,
+            opacity: 0.4
+        });
+        const edgeLine = new THREE.LineSegments(edgeGeo, edgeMat);
+        edgeLine.position.copy(floor.position);
+        scene.add(edgeLine);
+
+        // === Walls ===
+        const wallMat = new THREE.MeshStandardMaterial({
+            color: 0x1e293b,
+            roughness: 0.6,
+            metalness: 0.1,
+            transparent: true,
+            opacity: 0.5
+        });
+        const wallMatSolid = new THREE.MeshStandardMaterial({
+            color: 0x0f172a,
+            roughness: 0.7,
+            metalness: 0.05
+        });
+        const wallDefs = [
+            {px:r.x, pz:r.z, sx:wallT, sz:r.d},
+            {px:r.x+r.w, pz:r.z, sx:wallT, sz:r.d},
+            {px:r.x, pz:r.z, sx:r.w, sz:wallT},
+            {px:r.x, pz:r.z+r.d, sx:r.w, sz:wallT}
+        ];
+        wallDefs.forEach(function(wall){
+            const geo = new THREE.BoxGeometry(wall.sx, wallH, wall.sz);
+            const mesh = new THREE.Mesh(geo, wallMat);
+            mesh.position.set(wall.px+wall.sx/2, wallH/2, wall.pz+wall.sz/2);
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+            scene.add(mesh);
+            allMeshes.push(mesh);
+
+            // Wall wireframe edge
+            const wGeo = new THREE.EdgesGeometry(geo);
+            const wEdge = new THREE.LineSegments(wGeo, new THREE.LineBasicMaterial({
+                color: 0x334155,
+                transparent: true,
+                opacity: 0.3
+            }));
+            wEdge.position.copy(mesh.position);
+            scene.add(wEdge);
+        });
+
+        // === Room label (floating 3D text sprite) ===
+        const canvas = document.createElement('canvas');
+        canvas.width = 512;
+        canvas.height = 128;
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0,0,512,128);
+        // Glow behind text
+        ctx.shadowColor = 'rgba(59,130,246,0.5)';
+        ctx.shadowBlur = 20;
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 56px Arial,sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(name, 256, 64);
+        // Subtitle
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = 'rgba(148,163,184,0.7)';
+        ctx.font = '24px Arial,sans-serif';
+        ctx.fillText((r.w/10)+'x'+(r.d/10)+'cm', 256, 100);
+        
+        const tex = new THREE.CanvasTexture(canvas);
+        const spriteMat = new THREE.SpriteMaterial({
+            map: tex,
+            transparent: true,
+            opacity: 0,
+            depthWrite: false
+        });
+        const sprite = new THREE.Sprite(spriteMat);
+        sprite.position.set(cx, wallH + 400, cz);
+        sprite.scale.set(800, 200, 1);
+        scene.add(sprite);
+
+        // Animate label fade-in
+        (function(spr, delay){
+            setTimeout(function(){
+                let opacity = 0;
+                function fadeIn(){
+                    opacity += 0.02;
+                    spr.material.opacity = Math.min(opacity, 0.95);
+                    if(opacity < 1) requestAnimationFrame(fadeIn);
+                }
+                fadeIn();
+            }, delay);
+        })(sprite, 500 + i * 300);
+
+        // === Furniture ===
+        const furnColors = [0x60a5fa, 0xa78bfa, 0x34d399, 0xf472b6, 0xfbbf24, 0x06b6d4];
+        const furnTypes = [
+            {w:1200, d:800, h:400, label:'沙发'},
+            {w:800, d:800, h:500, label:'茶几'},
+            {w:600, d:600, h:800, label:'台灯'},
+            {w:1800, d:600, h:300, label:'电视柜'},
+            {w:500, d:500, h:700, label:'椅子'}
+        ];
+        const furnCount = 2 + Math.floor(Math.random() * 3);
+        for(let f=0; f<furnCount; f++){
+            const ft = furnTypes[f % furnTypes.length];
+            const fx = cx + (Math.random()-0.5) * (r.w * 0.5 - ft.w);
+            const fz = cz + (Math.random()-0.5) * (r.d * 0.5 - ft.d);
+            const fg = new THREE.BoxGeometry(ft.w, ft.h, ft.d);
+            const fm = new THREE.MeshStandardMaterial({
+                color: furnColors[f % furnColors.length],
+                roughness: 0.3,
+                metalness: 0.4,
+                emissive: furnColors[f % furnColors.length],
+                emissiveIntensity: 0.05
+            });
+            const fmh = new THREE.Mesh(fg, fm);
+            fmh.position.set(fx, ft.h/2 + 15, fz);
+            fmh.castShadow = true;
+            scene.add(fmh);
+        }
+    }
+
+    // ===== Particle System (floating stars) =====
+    const particleCount = 800;
+    const positions = new Float32Array(particleCount * 3);
+    const sizes = new Float32Array(particleCount);
+    const speeds = new Float32Array(particleCount);
+    for(let i=0; i<particleCount; i++){
+        positions[i*3] = (Math.random() - 0.5) * 16000;
+        positions[i*3+1] = Math.random() * 6000 + 200;
+        positions[i*3+2] = (Math.random() - 0.5) * 16000;
+        sizes[i] = Math.random() * 3 + 1;
+        speeds[i] = Math.random() * 0.3 + 0.1;
+    }
+    const particleGeo = new THREE.BufferGeometry();
+    particleGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    particleGeo.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+    const particleMat = new THREE.PointsMaterial({
+        color: 0x60a5fa,
+        size: 3,
+        transparent: true,
+        opacity: 0.6,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false
+    });
+    particles = new THREE.Points(particleGeo, particleMat);
+    scene.add(particles);
+    particles.userData = {speeds: speeds, initialY: positions.slice()};
+
+    // ===== Camera entrance animation =====
+    const startPos = {x: 5000, y: 5000, z: 7000};
+    const endPos = {x: 2500, y: 3500, z: 4500};
+    camera.position.set(startPos.x, startPos.y, startPos.z);
+    let progress = 0;
+    function entranceAnim(){
+        progress += 0.015;
+        if(progress < 1){
+            const t = Math.min(progress, 1);
+            const ease = 1 - Math.pow(1-t, 3); // cubic ease-out
+            camera.position.x = startPos.x + (endPos.x - startPos.x) * ease;
+            camera.position.y = startPos.y + (endPos.y - startPos.y) * ease;
+            camera.position.z = startPos.z + (endPos.z - startPos.z) * ease;
+            camera.lookAt(0, 200, 0);
+            requestAnimationFrame(entranceAnim);
+        } else {
+            controls.autoRotate = true;
+        }
+    }
+    controls.autoRotate = false;
+    entranceAnim();
+
+    // ===== Animation loop =====
+    let time = 0;
+    function animate(){
+        animId = requestAnimationFrame(animate);
+        time += 0.01;
+
+        // Auto-rotate via OrbitControls
+        controls.update();
+
+        // Animate particles - gentle floating
+        if(particles){
+            const pos = particles.geometry.attributes.position.array;
+            const spd = particles.userData.speeds;
+            const initY = particles.userData.initialY;
+            for(let i=0; i<particleCount; i++){
+                pos[i*3+1] = initY[i*3+1] + Math.sin(time * spd[i] + i) * 200;
+            }
+            particles.geometry.attributes.position.needsUpdate = true;
+            particles.rotation.y += 0.0003;
+        }
+
+        // Pulsing ring
+        ring.scale.x = 1 + Math.sin(time * 0.5) * 0.02;
+        ring.scale.z = 1 + Math.sin(time * 0.5) * 0.02;
+        ring.material.opacity = 0.06 + Math.sin(time * 0.3) * 0.03;
+
+        renderer.render(scene, camera);
+    }
+    animate();
+
+    // Resize handler
+    window.addEventListener('resize', function(){
+        const w2 = container.clientWidth || 800;
+        renderer.setSize(w2, 500);
+        camera.aspect = w2 / 500;
+        camera.updateProjectionMatrix();
+    });
+}
+
+function updateInfo(params){
+    const bar = document.getElementById('infoBar');
+    bar.innerHTML = '';
+    const items = [
+        {label:'风格', value:params.style||'现代'},
+        {label:'面积', value:(params.total_area||'')+'m²'},
+        {label:'房间', value:(params.rooms?params.rooms.length:'')+'间'}
+    ];
+    items.forEach(function(it){
+        const d = document.createElement('div'); d.className = 'item';
+        d.innerHTML = '<div class="label">'+it.label+'</div><div class="value">'+it.value+'</div>';
+        bar.appendChild(d);
+    });
+}
+
+function setPrompt(t){
+    document.getElementById('prompt').value = t;
+}
+
+async function submitDesign(){
+    var p = document.getElementById('prompt').value.trim();
+    if(!p){alert('请输入设计需求'); return}
+    var btn = document.getElementById('submitBtn'); btn.disabled = true;
+    var s = document.getElementById('status'); s.className = 'status loading';
+    s.innerHTML = '<span class="loader"></span>AI 正在分析需求并生成 3D 户型...';
+    var pw = document.getElementById('previewWrap'); pw.classList.remove('show');
+    try{
+        var r = await fetch('/api/design', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({prompt:p})});
+        var d = await r.json();
+        if(d.s){
+            s.className = 'status success'; s.innerHTML = '✅ 设计完成！点击拖动查看 3D 户型，自动旋转中';
+            init3D(d.params||{});
+            updateInfo(d.params||{});
+            var db = document.getElementById('downloadBar'); db.innerHTML = '';
+            if(d.dxf && d.dxf != ''){
+                var a = document.createElement('a'); a.href = d.dxf; a.download = 'floorplan.dxf';
+                a.innerHTML = '📐 下载 DXF 施工图'; db.appendChild(a);
+            }
+            pw.classList.add('show');
+        } else {
+            s.className = 'status error'; s.innerHTML = '❌ ' + d.e;
+        }
+    } catch(e){
+        s.className = 'status error'; s.innerHTML = '❌ 请求失败，请检查服务是否运行';
+    }
+    finally{ btn.disabled = false; }
+}
+</script>
+</body>
+</html>

@@ -1,105 +1,119 @@
-﻿# CAD 自动化制图系统
+﻿# 岩泊渡水电站 CAD 自动化制图系统
 
-基于 Python + ezdxf 的 CAD 自动出图工具。**无需安装 AutoCAD**，直接生成 DXF/PDF/SVG/PLT 文件。
+使用 Python 自动生成水电站厂房施工图纸 (DXF)、3D 模型 (STEP)、BIM 数据 (IFC)。
+
+## 目录结构
+
+```
+E:\CAD自动化制图\
+├── run.py                   ← 一键运行入口
+├── src/                     ← Python 源码
+│   ├── cad_toolbox_v8.py    ← 工具箱 v8 (核心)
+│   ├── gen_v8_pro.py        ← 生成 4 张施工图
+│   ├── render_v8.py         ← PNG 渲染
+│   ├── build_3d_model.py    ← 3D 建模
+│   └── ...
+├── output/                  ← 所有生成的文件
+│   ├── dxf/                 ← DXF 图纸
+│   ├── png/                 ← PNG 预览
+│   ├── html/                ← 网页预览
+│   ├── step/                ← 3D STEP 模型
+│   ├── ifc/                 ← BIM IFC 数据
+│   └── svg/                 ← SVG 矢量图
+├── scripts/                 ← 工具脚本
+├── docs/                    ← 文档/参考图纸
+└── README.md
+```
 
 ## 快速开始
 
-`ash
-# 安装依赖
-pip install ezdxf matplotlib svgwrite openpyxl
+```powershell
+python run.py
+```
 
-# 生成示例图纸
-python exam_task2.py           # 几何图形作业
-python exam_task5_v3.py        # 阶梯轴零件图
-python run.py campus           # 校园总平面图
-`
+按照提示选择操作，或者直接：
 
-## 文件结构
+```powershell
+python src/gen_v8_pro.py      # 生成 DXF 图纸
+python src/render_v8.py       # 渲染 PNG
+python src/build_3d_model.py  # 生成 3D 模型
+```
 
-| 文件 | 用途 |
-|------|------|
-| cad_toolbox.py | **核心工具箱** - 所有绘图功能统一入口 |
-| un.py | **命令行入口** - 一行命令出图 |
-| order_template.py | **接单模板** - 新订单从此开始 |
-| exam_task2.py | 几何图形作业（模板，可直接改参数复用） |
-| exam_task5_v3.py | 阶梯轴零件图（模板，可直接改参数复用） |
-| atch_parts.csv | 批量零件尺寸表 |
-| library.py | 块库（建筑/树木/车位/指北针等） |
-| hatch_lib.py | 填充系统 |
-| dim_lib.py | 尺寸标注系统 |
-| rame_lib.py | 图框/标题栏 |
-| ender.py | DXF → SVG/PDF 渲染引擎 |
-| dxf_excel.py | Excel 数据驱动生成 |
-| 	est_system.py | **一键自检** - 接单前跑一遍 |
+## 查看图纸
 
-## 命令速查
+- **网页预览**: 双击 `output/html/yanbodu_digital_twin.html`
+- **CAD 软件**: 打开 `output/dxf/*.dxf`
+- **3D 查看**: 打开 `output/step/*.step`
 
-`ash
-python run.py list             # 查看所有可用模板
-python run.py shaft            # 生成阶梯轴零件图
-python run.py geometry         # 生成几何图形作业
-python run.py batch --csv batch_parts.csv   # 批量生成阶梯轴
-python run.py excel --excel 图块数据模板.xlsx  # 从 Excel 生成
-python test_system.py          # 一键自检
-`
+## 技术栈
 
-## 接单流程
+| 工具 | 用途 | 版本 |
+|------|------|:----:|
+| Python | 核心语言 | 3.12 |
+| ezdxf | DXF 生成 | 1.4.4 |
+| CadQuery | 3D 参数化建模 | 2.7 |
+| ifcopenshell | BIM/IFC 导出 | 0.8 |
 
-`
-收到作业需求
-    │
-    ├─ 几何作图题 → 改 exam_task2.py 参数
-    ├─ 机械零件图 → 改 exam_task5_v3.py 参数
-    ├─ 批量生成   → 填 batch_parts.csv
-    │               python run.py batch
-    └─ 全新题型   → 复制 order_template.py
-                    修改尺寸数据 + 绘图代码
-    │
-    ▼
-python xxx.py  →  输出 DXF + PDF
-    │
-    ▼
-交付 PDF 给客户
-`
+---
 
-## 工具箱 API
+# 🏠 家装室内设计 CAD 系统 (2026年新增)
 
-`python
-from cad_toolbox import CADProject
+## 概述
+基于 Python + ezdxf + Three.js 的家装室内设计自动化系统，从户型模板生成 DXF 施工图 + 3D 交互展示。
 
-p = CADProject("项目名")
-p.setup_layers()
+## 参考的 GitHub 优质项目
+| 项目 | ⭐ | 核心技术 |
+|------|----|---------|
+| blueprint3D | — | Three.js 2D/3D 室内设计架构 |
+| Interior-3D-plnner | ★8 | Three.js 室内设计编辑器 |
+| bp3d-examples | ★11 | Three.js 室内空间设计库 |
+| AI-CAD | — | FastAPI + ezdxf + LLM 平面图生成 |
+| AIStudioFloorPlan | ★24 | 2D→3D AI 室内设计 |
 
-# 基本图元
-p.line(x1, y1, x2, y2, layer="OUTLINE", lw=0.5)
-p.circle(cx, cy, r, layer="OUTLINE", lw=0.5)
-p.arc(cx, cy, r, a1, a2, layer="OUTLINE", lw=0.5)
-p.rect(cx, cy, w, h, layer="OUTLINE", lw=0.5)
-p.text(text, x, y, height=2.5, layer="TEXT")
+## 架构 (借鉴 blueprint3D)
+```
+interior_project/
+├── model/           # 数据模型 (Room, Wall, Furniture)
+├── floorplanner/    # 2D 平面图 (DXF + SVG)
+├── three/           # 3D 场景 (Three.js)
+├── items/           # 家具库 (参数化)
+└── core/            # 工具函数
+```
 
-# 高级功能
-p.circle_array(cx, cy, w, h, cols, rows, r)  # 圆阵列
-p.dim_h(x1, x2, y, text="100")               # 水平标注
-p.roughness(x, y, ra=3.2)                     # 粗糙度
-p.tolerance(x, y, "圆圆", "0.02", "A-B")    # 形位公差
-p.thread_ext(x1, x2, y, major_r, minor_r)    # 螺纹
-p.hatch_section(boundary_pts)                 # 剖面线
+## 快速开始
+```powershell
+cd E:\CAD自动化制图
+python interior_run.py
+# 自动启动 Web 服务到 http://localhost:8765/interior_index.html
+```
 
-# 图框 + 输出
-p.add_frame(frame_size="A3")
-p.save("output.dxf")
-p.export_pdf("output.pdf")
-p.export_svg("output.svg")
-p.export_plt("output.plt")
-`
+## 输出文件
+| 文件 | 格式 | 说明 |
+|------|------|------|
+| output/interior_floorplan.dxf | DXF | 施工图（可导入 AutoCAD） |
+| output/interior_scene.json | JSON | Three.js 3D 场景数据 |
+| interior_index.html | HTML | Three.js 3D 交互查看器 |
 
-## 预览
+## 功能特性
+- 🏗️ **户型模板**: 两室一厅标准户型 (7个房间, 95m²)
+- 🧱 **3D 墙体**: 双线墙带厚度/高度/材质
+- 🛋️ **家具库**: 15+ 参数化家具（床/沙发/餐桌/卫浴等）
+- 🎮 **交互控制**: OrbitControls (旋转/缩放/平移) + 一键漫游
+- 📊 **信息面板**: 房间面积统计 + 点击跳转
+- 🗺️ **小地图**: 2D 户型缩略图导航
+- 📐 **DXF 输出**: 标准 CAD 图层/尺寸标注/填充图案
+- 🏠 **房间着色**: 按功能区分颜色（客厅蓝/卧室紫/厨房绿等）
 
-生成的 PDF 可直接发给客户确认，无需对方安装 AutoCAD。
+## 评分 (自我评估)
+| 维度 | 分数 | 说明 |
+|------|------|------|
+| 平面图生成 | 75/100 | DXF 图层规范，标注完整 |
+| 3D 可视化 | 80/100 | Three.js 场景构建，阴影/光照/交互 |
+| 家具库 | 70/100 | 15+ 参数化家具，颜色丰富 |
+| 交互体验 | 75/100 | OrbitControls + 信息面板 + 房间跳转 |
+| 施工图输出 | 70/100 | DXF 标准规范，还需完善尺寸标注 |
+| 代码架构 | 80/100 | 数据模型层/渲染层/展示层分离 |
+| **综合** | **75/100** | **B+ 等级，可接家装 CAD 单子** |
 
-## 依赖
+---
 
-- ezdxf >= 1.4
-- matplotlib（用于 PDF 导出）
-- svgwrite（用于 SVG 导出）
-- openpyxl（用于 Excel 数据驱动）

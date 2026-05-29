@@ -1,0 +1,115 @@
+{
+  "concrete": {
+    "name": "concrete",
+    "path": "textures/concrete/",
+    "maps": {
+      "color": "textures/concrete/Concrete020_1K-JPG_Color.jpg",
+      "displacement": "textures/concrete/Concrete020_1K-JPG_Displacement.jpg",
+      "normalDX": "textures/concrete/Concrete020_1K-JPG_NormalDX.jpg",
+      "normal": "textures/concrete/Concrete020_1K-JPG_NormalGL.jpg",
+      "roughness": "textures/concrete/Concrete020_1K-JPG_Roughness.jpg"
+    },
+    "fallbackColor": "#A0A0A0"
+  },
+  "fabric_cotton": {
+    "name": "fabric_cotton",
+    "path": "textures/fabric_cotton/",
+    "maps": {
+      "color": "textures/fabric_cotton/Fabric019_1K-JPG_Color.jpg",
+      "displacement": "textures/fabric_cotton/Fabric019_1K-JPG_Displacement.jpg",
+      "normalDX": "textures/fabric_cotton/Fabric019_1K-JPG_NormalDX.jpg",
+      "normal": "textures/fabric_cotton/Fabric019_1K-JPG_NormalGL.jpg",
+      "opacity": "textures/fabric_cotton/Fabric019_1K-JPG_Opacity.jpg",
+      "roughness": "textures/fabric_cotton/Fabric019_1K-JPG_Roughness.jpg"
+    },
+    "fallbackColor": "#F0EDE8"
+  },
+  "fabric_velvet": {
+    "name": "fabric_velvet",
+    "path": "textures/fabric_velvet/",
+    "maps": {
+      "color": "textures/fabric_velvet/Fabric013_1K-JPG_Color.jpg",
+      "displacement": "textures/fabric_velvet/Fabric013_1K-JPG_Displacement.jpg",
+      "normalDX": "textures/fabric_velvet/Fabric013_1K-JPG_NormalDX.jpg",
+      "normal": "textures/fabric_velvet/Fabric013_1K-JPG_NormalGL.jpg",
+      "opacity": "textures/fabric_velvet/Fabric013_1K-JPG_Opacity.jpg",
+      "roughness": "textures/fabric_velvet/Fabric013_1K-JPG_Roughness.jpg"
+    },
+    "fallbackColor": "#7B6B8A"
+  },
+  "leather": {
+    "name": "leather",
+    "path": "textures/leather/",
+    "maps": {
+      "color": "textures/leather/Leather008_1K-JPG_Color.jpg",
+      "ao": "textures/leather/Leather008_1K-JPG_AmbientOcclusion.jpg",
+      "displacement": "textures/leather/Leather008_1K-JPG_Displacement.jpg",
+      "normalDX": "textures/leather/Leather008_1K-JPG_NormalDX.jpg",
+      "normal": "textures/leather/Leather008_1K-JPG_NormalGL.jpg",
+      "roughness": "textures/leather/Leather008_1K-JPG_Roughness.jpg"
+    },
+    "fallbackColor": "#8B5E3C"
+  },
+  "marble_white": {
+    "name": "marble_white",
+    "path": "textures/marble_white/",
+    "maps": {
+      "color": "textures/marble_white/Marble003_1K-JPG_Color.jpg",
+      "displacement": "textures/marble_white/Marble003_1K-JPG_Displacement.jpg",
+      "normalDX": "textures/marble_white/Marble003_1K-JPG_NormalDX.jpg",
+      "normal": "textures/marble_white/Marble003_1K-JPG_NormalGL.jpg",
+      "roughness": "textures/marble_white/Marble003_1K-JPG_Roughness.jpg"
+    },
+    "fallbackColor": "#E0D8D0"
+  },
+  "metal_brushed": {
+    "name": "metal_brushed",
+    "path": "textures/metal_brushed/",
+    "maps": {
+      "color": "textures/metal_brushed/Metal032_1K-JPG_Color.jpg",
+      "displacement": "textures/metal_brushed/Metal032_1K-JPG_Displacement.jpg",
+      "metalness": "textures/metal_brushed/Metal032_1K-JPG_Metalness.jpg",
+      "normalDX": "textures/metal_brushed/Metal032_1K-JPG_NormalDX.jpg",
+      "normal": "textures/metal_brushed/Metal032_1K-JPG_NormalGL.jpg",
+      "roughness": "textures/metal_brushed/Metal032_1K-JPG_Roughness.jpg"
+    },
+    "fallbackColor": "#A0A0A0"
+  },
+  "plaster_wall": {
+    "name": "plaster_wall",
+    "path": "textures/plaster_wall/",
+    "maps": {
+      "color": "textures/plaster_wall/Plaster001_1K-JPG_Color.jpg",
+      "displacement": "textures/plaster_wall/Plaster001_1K-JPG_Displacement.jpg",
+      "normalDX": "textures/plaster_wall/Plaster001_1K-JPG_NormalDX.jpg",
+      "normal": "textures/plaster_wall/Plaster001_1K-JPG_NormalGL.jpg",
+      "roughness": "textures/plaster_wall/Plaster001_1K-JPG_Roughness.jpg"
+    },
+    "fallbackColor": "#F0EBE5"
+  },
+  "tile_ceramic": {
+    "name": "tile_ceramic",
+    "path": "textures/tile_ceramic/",
+    "maps": {
+      "color": "textures/tile_ceramic/Tiles065_1K-JPG_Color.jpg",
+      "ao": "textures/tile_ceramic/Tiles065_1K-JPG_AmbientOcclusion.jpg",
+      "displacement": "textures/tile_ceramic/Tiles065_1K-JPG_Displacement.jpg",
+      "normalDX": "textures/tile_ceramic/Tiles065_1K-JPG_NormalDX.jpg",
+      "normal": "textures/tile_ceramic/Tiles065_1K-JPG_NormalGL.jpg",
+      "roughness": "textures/tile_ceramic/Tiles065_1K-JPG_Roughness.jpg"
+    },
+    "fallbackColor": "#E8E0D0"
+  },
+  "wood_oak": {
+    "name": "wood_oak",
+    "path": "textures/wood_oak/",
+    "maps": {
+      "color": "textures/wood_oak/Wood037_1K-JPG_Color.jpg",
+      "displacement": "textures/wood_oak/Wood037_1K-JPG_Displacement.jpg",
+      "normalDX": "textures/wood_oak/Wood037_1K-JPG_NormalDX.jpg",
+      "normal": "textures/wood_oak/Wood037_1K-JPG_NormalGL.jpg",
+      "roughness": "textures/wood_oak/Wood037_1K-JPG_Roughness.jpg"
+    },
+    "fallbackColor": "#C4A882"
+  }
+}

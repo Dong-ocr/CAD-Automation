@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>CAD ?? AI ?? ? ???? ? ??? ? ????</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{background:#07070d;color:#e0e0e0;font-family:'Inter','Microsoft YaHei',system-ui,sans-serif;overflow-x:hidden}
+::selection{background:#60a5fa33}
+nav{position:fixed;top:0;left:0;right:0;z-index:1000;height:52px;display:flex;justify-content:space-between;align-items:center;padding:0 24px;background:rgba(7,7,13,0.85);backdrop-filter:blur(20px);border-bottom:1px solid rgba(255,255,255,0.04)}
+nav .logo{font-size:14px;font-weight:800;color:#fff;display:flex;align-items:center;gap:8px}
+nav .logo span{color:#60a5fa}
+nav .badge{font-size:8px;background:rgba(96,165,250,0.12);color:#60a5fa;padding:3px 7px;border-radius:4px;font-weight:700;letter-spacing:.5px}
+nav ul{display:flex;gap:3px;list-style:none}
+nav ul a{padding:5px 12px;border-radius:5px;color:rgba(255,255,255,0.35);text-decoration:none;font-size:10px;font-weight:600;letter-spacing:.3px;transition:.2s}
+nav ul a:hover{color:#fff;background:rgba(255,255,255,0.04)}
+.section{padding:80px 20px 60px;position:relative}
+.hero{min-height:100vh;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;flex-direction:column}
+.hero-bg{position:absolute;inset:0;background:radial-gradient(ellipse 60% 50% at 30% 40%,rgba(96,165,250,0.06),transparent 70%),radial-gradient(ellipse 40% 30% at 70% 60%,rgba(96,165,250,0.03),transparent);pointer-events:none}
+.hero-grid{position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,0.012) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.012) 1px,transparent 1px);background-size:60px 60px;mask:radial-gradient(ellipse 60% 50% at 50% 40%,black 30%,transparent 70%)}
+.hero-content{position:relative;z-index:2;text-align:center;padding:0 20px;max-width:900px}
+.hero-badge{display:inline-flex;align-items:center;gap:6px;padding:5px 16px;border-radius:100px;border:1px solid rgba(96,165,250,.15);background:rgba(96,165,250,.05);font-size:10px;font-weight:600;letter-spacing:2px;color:#60a5fa;margin-bottom:20px}
+.hero h1{font-size:clamp(2.2rem,7vw,5rem);font-weight:900;line-height:1.05;background:linear-gradient(135deg,#e8e8e8,#60a5fa 30%,#f0b840 60%,#e8e8e8);background-size:250% 250%;-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:14px}
+.hero p{font-size:clamp(.9rem,1.5vw,1.1rem);color:rgba(255,255,255,0.4);max-width:600px;margin:0 auto 28px;line-height:1.6}
+.hero-actions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:10px 22px;border-radius:8px;text-decoration:none;font-size:11px;font-weight:600;transition:all .25s;letter-spacing:.3px}
+.btn-primary{background:#60a5fa;color:#07070d;border:none}
+.btn-primary:hover{background:#7bb8ff;transform:translateY(-1px)}
+.btn-secondary{background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.7);border:1px solid rgba(255,255,255,0.08)}
+.btn-secondary:hover{background:rgba(255,255,255,0.1);color:#fff;transform:translateY(-1px)}
+
+/* Stats bar */
+.stats{display:flex;gap:40px;justify-content:center;margin-top:40px;flex-wrap:wrap}
+.stat-item{text-align:center}
+.stat-num{font-size:28px;font-weight:800;color:#60a5fa}
+.stat-label{font-size:10px;color:rgba(255,255,255,0.3);letter-spacing:1px;margin-top:2px}
+
+/* Card grid */
+.card-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;max-width:1200px;margin:0 auto;padding:0 20px}
+.card{background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);border-radius:12px;padding:24px;transition:all .3s;position:relative;overflow:hidden;text-decoration:none;color:inherit;display:block}
+.card:hover{background:rgba(255,255,255,0.04);border-color:rgba(96,165,250,0.15);transform:translateY(-2px)}
+.card-glow{position:absolute;top:-50%;left:-50%;width:200%;height:200%;background:radial-gradient(circle,rgba(96,165,250,0.03),transparent 60%);pointer-events:none;opacity:0;transition:opacity .4s}
+.card:hover .card-glow{opacity:1}
+.card-icon{font-size:28px;margin-bottom:10px}
+.card h3{font-size:14px;font-weight:700;color:#fff;margin-bottom:4px}
+.card p{font-size:10px;color:rgba(255,255,255,0.35);line-height:1.5}
+.card-tags{display:flex;gap:4px;margin-top:10px;flex-wrap:wrap}
+.card-tag{font-size:8px;padding:2px 6px;border-radius:3px;background:rgba(96,165,250,0.08);color:rgba(96,165,250,0.6);font-weight:600;letter-spacing:.3px}
+
+/* Section title */
+.st{text-align:center;margin-bottom:40px}
+.st h2{font-size:22px;font-weight:700;color:#fff}
+.st p{font-size:10px;color:rgba(255,255,255,0.3);margin-top:4px;letter-spacing:1px}
+
+.feature-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px;max-width:1200px;margin:0 auto;padding:0 20px}
+.feature{background:rgba(255,255,255,0.015);border:1px solid rgba(255,255,255,0.04);border-radius:10px;padding:18px}
+.feature h4{font-size:11px;font-weight:600;color:#fff;margin-bottom:3px}
+.feature p{font-size:9px;color:rgba(255,255,255,0.3);line-height:1.4}
+.feature .num{font-size:24px;font-weight:800;color:rgba(96,165,250,0.15);float:right;margin-top:-8px}
+
+footer{text-align:center;padding:30px;font-size:9px;color:rgba(255,255,255,0.15);border-top:1px solid rgba(255,255,255,0.03)}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="logo">CAD<span>?AI</span> <span class="badge">v3.0</span></div>
+  <ul>
+    <li><a href="#showcase">??</a></li>
+    <li><a href="#features">??</a></li>
+    <li><a href="#tech">???</a></li>
+  </ul>
+</nav>
+
+<!-- Hero -->
+<section class="hero">
+  <div class="hero-bg"></div>
+  <div class="hero-grid"></div>
+  <div class="hero-content">
+    <div class="hero-badge">? CAD ?? AI ??</div>
+    <h1>??????<br>????</h1>
+    <p>FreeCAD ????? ? Three.js WebGL 3D ???? ? DXF ?????<br>???? ? ??? ? ???? ? ????????</p>
+    <div class="hero-actions">
+      <a href="cliff_villa_3d.html" class="btn btn-primary">?? ???? 3D</a>
+      <a href="index_yanbodu.html" class="btn btn-secondary">?? ??? 3D</a>
+      <a href="studio.html" class="btn btn-secondary">?? ????</a>
+    </div>
+    <div class="stats">
+      <div class="stat-item"><div class="stat-num">3</div><div class="stat-label">3D ??</div></div>
+      <div class="stat-item"><div class="stat-num">4</div><div class="stat-label">CAD ??</div></div>
+      <div class="stat-item"><div class="stat-num">22</div><div class="stat-label">????</div></div>
+      <div class="stat-item"><div class="stat-num">10</div><div class="stat-label">????</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- Showcase -->
+<section class="section" id="showcase">
+<div class="st"><h2>?? ????</h2><p>INTERACTIVE 3D GALLERY</p></div>
+<div class="card-grid">
+  <a href="cliff_villa_3d.html" class="card">
+    <div class="card-glow"></div>
+    <div class="card-icon">??</div>
+    <h3>???? ? Three.js</h3>
+    <p>40000? ???? ? ???? ? ???? ? 12 ??? ? 18 ??? ? ?????????? ? ?/?????</p>
+    <div class="card-tags"><span class="card-tag">WebGL</span><span class="card-tag">OrbitControls</span><span class="card-tag">????</span></div>
+  </a>
+  <a href="index_yanbodu.html" class="card">
+    <div class="card-glow"></div>
+    <div class="card-icon">??</div>
+    <h3>??????</h3>
+    <p>94m ? 17m ?? ? SF40 ??? ? HL220 ??? ? 50t ????? ? ???? ? ????????</p>
+    <div class="card-tags"><span class="card-tag">??3D</span><span class="card-tag">????</span><span class="card-tag">??</span></div>
+  </a>
+  <a href="studio.html" class="card">
+    <div class="card-glow"></div>
+    <div class="card-icon">??</div>
+    <h3>???????</h3>
+    <p>AI ???? ? 22 ????? ? ???? ? DXF ?? ? ?????? ? ????</p>
+    <div class="card-tags"><span class="card-tag">AI ??</span><span class="card-tag">DXF</span><span class="card-tag">????</span></div>
+  </a>
+  <a href="showcase.html" class="card">
+    <div class="card-glow"></div>
+    <div class="card-icon">??</div>
+    <h3>????? V3</h3>
+    <p>Canvas 2D ???? ? ?????? ? ????? ? ??? ? ??? ? ?????</p>
+    <div class="card-tags"><span class="card-tag">Canvas 2D</span><span class="card-tag">??</span><span class="card-tag">??</span></div>
+  </a>
+</div>
+</section>
+
+<!-- Features -->
+<section class="section" id="features" style="background:rgba(255,255,255,0.01)">
+<div class="st"><h2>?? ??????</h2><p>CORE CAPABILITIES</p></div>
+<div class="feature-grid">
+  <div class="feature"><div class="num">01</div><h4>FreeCAD ?????</h4><p>Python ??? ? Box/Cylinder/Sphere ?? ? ??/???? ? ?? FCStd/STEP/STL ? ?? 90+ ??</p></div>
+  <div class="feature"><div class="num">02</div><h4>Three.js WebGL 3D</h4><p>PBR ???? ? ???? ? ???/??? ? ???? ? ???? ? ?/??? ? ??????</p></div>
+  <div class="feature"><div class="num">03</div><h4>DXF ?????</h4><p>10 ???? ? ?? GB/T 50001 ?? ? ??/??/?/??/?? ? ACI ???? ? CTB ????</p></div>
+  <div class="feature"><div class="num">04</div><h4>??????</h4><p>GB/T 50001-2017 ???? ? SL73 ?????? ? ??/???? ? CTB ??????</p></div>
+  <div class="feature"><div class="num">05</div><h4>TechDraw ???</h4><p>FreeCAD TechDraw ?? ? ???/???/??? ? SVG/PDF ?? ? ???? ? ????</p></div>
+  <div class="feature"><div class="num">06</div><h4>???? AI</h4><p>Python ???? ? 22 ????? ? ???? ? JSON ??? ? ???? ? SVG ??</p></div>
+  <div class="feature"><div class="num">07</div><h4>?????</h4><p>FCStd ? STEP ? STL ? IGS ? BREP ? FreeCAD ???? ? ???? ? ????</p></div>
+  <div class="feature"><div class="num">08</div><h4>?????</h4><p>Nginx ???? ? SSH ???? ? ???? ? ???? ? ????</p></div>
+</div>
+</section>
+
+<!-- Tech Stack -->
+<section class="section" id="tech">
+<div class="st"><h2>?? ???</h2><p>TECHNOLOGY STACK</p></div>
+<div class="card-grid" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr))">
+  <div class="card" style="cursor:default"><h3>?? Python 3.12+</h3><p>CAD ??????? ? FreeCAD ? ? DXF ??</p></div>
+  <div class="card" style="cursor:default"><h3>? Three.js r167</h3><p>WebGL ?? ? PBR?? ? OrbitControls ? ????</p></div>
+  <div class="card" style="cursor:default"><h3>?? FreeCAD 1.1.1</h3><p>????? ? TechDraw ? STEP/STL/IGS ??</p></div>
+  <div class="card" style="cursor:default"><h3>?? ezdxf 1.4</h3><p>DXF ?? ? ??/??/?? ? ????</p></div>
+  <div class="card" style="cursor:default"><h3>?? ???</h3><p>Ubuntu 24.04 ? Nginx ? SSH ??</p></div>
+</div>
+</section>
+
+<footer>
+  CAD ?? AI ?? v3.0 ? ?? Python + Three.js + FreeCAD ? MIT License
+</footer>
+
+</body>
+</html>

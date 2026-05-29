@@ -1,0 +1,477 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>别墅建造 · 全过程</title>
+<script type="importmap">
+{
+  "imports": {
+    "three": "/lib/three.module.js",
+    "three/addons/": "/lib/"
+  }
+}
+</script>
+<style>
+*{margin:0;padding:0}
+body{background:#070710;overflow:hidden;font-family:"PingFang SC","Microsoft YaHei",sans-serif}
+#hud{position:fixed;bottom:50px;left:50%;transform:translateX(-50%);z-index:10;pointer-events:none;text-align:center;transition:opacity 2s}
+#hud .phase{color:rgba(255,255,255,0.7);font-size:20px;letter-spacing:3px;font-weight:300;text-shadow:0 0 30px rgba(100,100,255,0.3)}
+#hud .sub{color:rgba(255,255,255,0.25);font-size:12px;margin-top:6px;letter-spacing:2px}
+#hud .bar{width:200px;height:1.5px;background:rgba(255,255,255,0.08);border-radius:2px;margin:14px auto 0;overflow:hidden}
+#hud .bar-fill{height:100%;width:0%;background:linear-gradient(90deg,#667eea,#a78bfa);border-radius:2px;transition:width 0.3s}
+#brand{position:fixed;top:30px;left:50%;transform:translateX(-50%);color:rgba(255,255,255,0.05);font-size:10px;letter-spacing:5px;z-index:10;pointer-events:none}
+</style>
+</head>
+<body>
+<div id="hud">
+  <div class="phase" id="phaseText">&#9632; 准备施工</div>
+  <div class="sub" id="subText">AI 建筑生成系统</div>
+  <div class="bar"><div class="bar-fill" id="progressBar"></div></div>
+</div>
+<div id="brand">AI &#183; CONSTRUCTION TIMELAPSE</div>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/OrbitControls.js';
+
+// ===== 场景 =====
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x070710);
+scene.fog = new THREE.FogExp2(0x070710, 0.00003);
+
+const camera = new THREE.PerspectiveCamera(28, innerWidth/innerHeight, 1, 200000);
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 0.9;
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+document.body.appendChild(renderer.domElement);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.set(0, 4000, 0);
+controls.enableDamping = true;
+controls.dampingFactor = 0.05;
+controls.autoRotate = false;
+controls.minDistance = 3000;
+controls.maxDistance = 60000;
+controls.maxPolarAngle = Math.PI / 2.1;
+controls.update();
+
+// ===== 灯光 (固定) =====
+scene.add(new THREE.AmbientLight(0x223366, 0.5));
+const moon = new THREE.DirectionalLight(0x8899cc, 0.6);
+moon.position.set(-30000, 50000, 20000); scene.add(moon);
+const fill = new THREE.DirectionalLight(0x445577, 0.15);
+fill.position.set(20000, 20000, -20000); scene.add(fill);
+scene.add(new THREE.HemisphereLight(0x6688cc, 0x224422, 0.3));
+
+// ===== 星空 (预先创建, 渐显) =====
+let stars;
+(function() {
+  const n = 2000;
+  const pos = new Float32Array(n*3), col = new Float32Array(n*3);
+  for (let i = 0; i < n; i++) {
+    const t = Math.random()*6.28, p = Math.acos(2*Math.random()-1), r = 100000+Math.random()*50000;
+    pos[i*3]=r*Math.sin(p)*Math.cos(t); pos[i*3+1]=Math.abs(r*Math.cos(p)); pos[i*3+2]=r*Math.sin(p)*Math.sin(t);
+    const b = 0.3+Math.random()*0.7;
+    col[i*3]=b; col[i*3+1]=b; col[i*3+2]=b;
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position',new THREE.BufferAttribute(pos,3));
+  g.setAttribute('color',new THREE.BufferAttribute(col,3));
+  stars = new THREE.Points(g, new THREE.PointsMaterial({size:1.5,vertexColors:true,transparent:true,opacity:0,depthWrite:false}));
+  scene.add(stars);
+})();
+
+// ===== 地面 (预先创建) =====
+const gnd = new THREE.Mesh(
+  new THREE.PlaneGeometry(100000, 100000),
+  new THREE.MeshStandardMaterial({ color: 0x1a2a1a, roughness: 1, transparent: true, opacity: 0 })
+);
+gnd.rotation.x = -Math.PI/2; gnd.position.y = -10; gnd.receiveShadow = true;
+scene.add(gnd);
+
+// 草地圈
+const lawnMeshes = [];
+const lm = new THREE.MeshStandardMaterial({ color: 0x2a4a2a, roughness: 1, transparent: true, opacity: 0 });
+for (let i = 0; i < 40; i++) {
+  const a = Math.random()*6.28, r = 8000+Math.random()*12000;
+  const p = new THREE.Mesh(new THREE.CircleGeometry(1000+Math.random()*3000, 6), lm);
+  p.rotation.x = -Math.PI/2; p.position.set(Math.cos(a)*r, -9, Math.sin(a)*r);
+  scene.add(p); lawnMeshes.push(p);
+}
+
+// ===== 建筑参数 =====
+const FL = 5, FH = 480, SH = 140, FULL = FH + SH;
+const BW = 11000, BD = 7500, WT = 150;
+const winW = 1300, winH = 3000;
+
+// ===== 存储所有动画对象 =====
+const animQueue = [];
+let totalDuration = 0;
+
+function anim(obj, start, duration, props, ease = 'outCubic') {
+  animQueue.push({ obj, start, duration, props, ease, done: false });
+  const end = start + duration;
+  if (end > totalDuration) totalDuration = end;
+}
+
+// ===== 缓动函数 =====
+function easeOutCubic(t) { return 1 - Math.pow(1-t, 3); }
+function easeOutElastic(t) { const c=0.5; return Math.pow(2,-10*t)*Math.sin((t-c/4)*(2*Math.PI)/c)+1; }
+function easeOutBounce(t) { return t<1/2.75 ? 7.5625*t*t : t<2/2.75 ? 7.5625*(t-=1.5/2.75)*t+0.75 : t<2.5/2.75 ? 7.5625*(t-=2.25/2.75)*t+0.9375 : 7.5625*(t-=2.625/2.75)*t+0.984375; }
+
+// ===== 1. 地面出现 =====
+anim(gnd, 0, 1.5, { opacity: 1 }, 'outCubic');
+anim(stars.material, 1, 2, { opacity: 0.5 }, 'outCubic');
+anim(lm, 0.5, 1, { opacity: 0.4 }, 'outCubic');
+for (const l of lawnMeshes) anim(l, 0.5+Math.random()*0.8, 0.8, { opacity: 0.3 }, 'outCubic');
+
+// ===== 2-6. 逐层建造 =====
+const floorMeshes = [];
+const wallMeshes = [];
+const glassMeshes = [];
+
+for (let f = 0; f < FL; f++) {
+  const y0 = f * FULL;
+  const fw = f === 0 ? BW + 400 : BW;
+  const fd = f === 0 ? BD + 400 : BD;
+  const floorStart = 2 + f * 2.8;
+
+  // 楼板
+  const slab = new THREE.Mesh(
+    new THREE.BoxGeometry(fw+300, SH, fd+300),
+    new THREE.MeshStandardMaterial({ color: 0xc8c0b0, roughness: 0.6, transparent: true, opacity: 0 })
+  );
+  slab.position.set(0, y0 - FULL, 0); slab.receiveShadow = true;
+  scene.add(slab); floorMeshes.push(slab);
+  anim(slab, floorStart, 0.8, { y: y0, opacity: 1 }, 'outBounce');
+
+  const wallColor = f % 2 === 0 ? 0xf0ebe0 : 0xe4dfd0;
+
+  // 4面墙 (rise up from slab)
+  const faces = [
+    { pos: [0, y0+SH+FULL, fd/2], size: [fw-2000, FH, WT] },
+    { pos: [0, y0+SH+FULL, -fd/2], size: [fw-2000, FH, WT] },
+    { pos: [-fw/2, y0+SH+FULL, 0], size: [WT, FH, fd] },
+    { pos: [fw/2, y0+SH+FULL, 0], size: [WT, FH, fd] },
+  ];
+  for (const face of faces) {
+    const wall = new THREE.Mesh(
+      new THREE.BoxGeometry(face.size[0], face.size[1], face.size[2]),
+      new THREE.MeshStandardMaterial({ color: wallColor, roughness: 0.7, transparent: true, opacity: 1 })
+    );
+    wall.position.set(face.pos[0], face.pos[1], face.pos[2]);
+    wall.receiveShadow = true;
+    if (f === 0) wall.castShadow = true;
+    scene.add(wall); wallMeshes.push(wall);
+    anim(wall, floorStart + 0.6, 0.6, { y: y0 + SH + FH/2 }, 'outCubic');
+  }
+
+  // 窗户 (带暖光, fade in)
+  const nWins = 4;
+  const tw = nWins * winW + (nWins-1) * 250;
+  const sx = -tw/2 + winW/2;
+  for (let i = 0; i < nWins; i++) {
+    const wx = sx + i * (winW + 250);
+    const glass = new THREE.Mesh(
+      new THREE.BoxGeometry(winW-40, winH-40, 20),
+      new THREE.MeshPhysicalMaterial({
+        color: 0x88ddff,
+        emissive: 0xff8844,
+        emissiveIntensity: 0.15 + Math.random() * 0.35,
+        metalness: 0.0, roughness: 0.05,
+        transparent: true, opacity: 0,
+      })
+    );
+    glass.position.set(wx, y0 + SH + winH/2, fd/2 - 10);
+    scene.add(glass); glassMeshes.push(glass);
+    anim(glass, floorStart + 1.0 + i*0.15, 0.5, { opacity: 0.4 + Math.random()*0.2 }, 'outCubic');
+  }
+
+  // 背面小窗
+  for (let i = 0; i < 3; i++) {
+    const wx = -2500 + i * 2500;
+    const g = new THREE.Mesh(
+      new THREE.BoxGeometry(600, 1000, 20),
+      new THREE.MeshPhysicalMaterial({ color: 0x88ccff, emissive: 0xff8844, emissiveIntensity: 0.1, transparent: true, opacity: 0 })
+    );
+    g.position.set(wx, y0 + SH + 1800, -fd/2 + 15);
+    scene.add(g); glassMeshes.push(g);
+    anim(g, floorStart + 1.5 + Math.random()*0.5, 0.4, { opacity: 0.3 + Math.random()*0.15 }, 'outCubic');
+  }
+
+  // 阳台 (隔一层)
+  if (f > 0 && f < FL-1 && f % 2 === 1) {
+    const bW = 2500, bD = 1000;
+    const bMat = new THREE.MeshStandardMaterial({ color: 0x999aaa, roughness: 0.5, metalness: 0.2, transparent: true, opacity: 0 });
+    const balcony = new THREE.Mesh(new THREE.BoxGeometry(bW, 80, bD), bMat);
+    balcony.position.set(0, y0 - FULL, fd/2 + bD/2 - 80);
+    scene.add(balcony);
+    anim(balcony, floorStart + 1.8, 0.6, { y: y0, opacity: 1 }, 'outBounce');
+  }
+
+  // 层进度提示
+  const phaseTexts = ['地基施工', '一层建造', '二层施工', '三层施工', '四层施工', '封顶施工'];
+  anim({ phase: phaseTexts[f+1] }, floorStart, 0, {}, 'outCubic');
+}
+
+// ===== 屋顶 =====
+const ry = FL * FULL;
+const roofStart = 2 + FL * 2.8;
+const roof = new THREE.Mesh(
+  new THREE.BoxGeometry(BW+1200, 180, BD+1200),
+  new THREE.MeshStandardMaterial({ color: 0x4a4a5a, roughness: 0.8, transparent: true, opacity: 0 })
+);
+roof.position.set(0, ry - 500, 0);
+scene.add(roof);
+anim(roof, roofStart, 1.0, { y: ry, opacity: 1 }, 'outBounce');
+anim({ phase: '屋顶施工' }, roofStart, 0, {}, 'outCubic');
+
+// 屋顶绿化
+const pm = new THREE.MeshStandardMaterial({ color: 0x3a6a3a, roughness: 1, transparent: true, opacity: 0 });
+for (let i = 0; i < 12; i++) {
+  const b = new THREE.Mesh(new THREE.SphereGeometry(100+Math.random()*120, 5), pm);
+  b.position.set((Math.random()-0.5)*3500, ry+80, (Math.random()-0.5)*2000);
+  b.scale.set(0,0,0);
+  scene.add(b);
+  anim(b, roofStart + 1.0 + i*0.1, 0.5, { 'scale.x': 1, 'scale.y': 1, 'scale.z': 1, opacity: 1 }, 'outElastic');
+}
+
+// 屋顶伞
+for (let i = 0; i < 2; i++) {
+  const ux = (Math.random()-0.5)*2500, uz = (Math.random()-0.5)*1500;
+  const pole = new THREE.Mesh(new THREE.CylinderGeometry(15, 25, 300, 5), new THREE.MeshStandardMaterial({ color: 0x888888, transparent: true, opacity: 0 }));
+  pole.position.set(ux, ry+100, uz); scene.add(pole);
+  anim(pole, roofStart + 2.0 + i*0.3, 0.5, { opacity: 1 }, 'outCubic');
+  const top = new THREE.Mesh(new THREE.ConeGeometry(350, 120, 6), new THREE.MeshStandardMaterial({ color: 0xd4a574, transparent: true, opacity: 0 }));
+  top.position.set(ux, ry+350, uz); top.scale.set(0,0,0); scene.add(top);
+  anim(top, roofStart + 2.2 + i*0.3, 0.6, { 'scale.x': 1, 'scale.y': 1, 'scale.z': 1, opacity: 1 }, 'outElastic');
+}
+
+// ===== 树木 =====
+const treeStart = roofStart + 3.5;
+anim({ phase: '园林绿化' }, treeStart, 0, {}, 'outCubic');
+function makeTree(x, z, s = 1, idx) {
+  const tg = new THREE.Group();
+  const t = new THREE.Mesh(new THREE.CylinderGeometry(25*s, 45*s, 300*s, 5), new THREE.MeshStandardMaterial({ color: 0x4a3018 }));
+  t.position.y = 150*s;
+  const c = new THREE.Mesh(new THREE.SphereGeometry(220*s, 5), new THREE.MeshStandardMaterial({ color: 0x2a5a27 }));
+  c.position.y = 300*s+120*s; c.castShadow = true;
+  tg.add(t); tg.add(c);
+  tg.position.set(x, -200*s, z);
+  tg.scale.set(0,0,0);
+  scene.add(tg);
+  anim(tg, treeStart + idx*0.15, 0.8, { y: 0, 'scale.x': 1, 'scale.y': 1, 'scale.z': 1 }, 'outElastic');
+}
+for (let i = 0; i < 14; i++) {
+  const a = Math.random()*6.28, r = 6500+Math.random()*9000;
+  makeTree(Math.cos(a)*r, Math.sin(a)*r, 0.7+Math.random()*0.5, i);
+}
+
+// ===== 泳池 =====
+const poolStart = treeStart + 2.5;
+anim({ phase: '泳池施工' }, poolStart, 0, {}, 'outCubic');
+const poolMat = new THREE.MeshPhysicalMaterial({ color: 0x1a6a8a, roughness: 0.0, metalness: 0.0, transparent: true, opacity: 0 });
+const pool = new THREE.Mesh(new THREE.BoxGeometry(3200, 200, 1800), poolMat);
+pool.position.set(11000, -100, 6000);
+scene.add(pool);
+anim(pool, poolStart, 0.8, { y: 125, opacity: 0.6 }, 'outBounce');
+
+const em = new THREE.MeshStandardMaterial({ color: 0xccbbaa, roughness: 0.8, transparent: true, opacity: 0 });
+for (const [ex, ez, ew, ed, i] of [[0,-950,3200,120,0],[0,950,3200,120,1],[-1650,0,120,1800,2],[1650,0,120,1800,3]]) {
+  const edge = new THREE.Mesh(new THREE.BoxGeometry(ew, 120, ed), em);
+  edge.position.set(11000+ex, -50, 6000+ez);
+  scene.add(edge);
+  anim(edge, poolStart + 0.5 + i*0.1, 0.4, { y: 250, opacity: 1 }, 'outCubic');
+}
+const poolLight = new THREE.PointLight(0x44ccff, 0, 4000, 2);
+poolLight.position.set(11000, -50, 6000);
+scene.add(poolLight);
+anim(poolLight, poolStart + 1.5, 1, { intensity: 1.5 }, 'outCubic');
+
+// ===== 车道 + 车 =====
+const roadStart = poolStart + 2.0;
+anim({ phase: '道路铺设' }, roadStart, 0, {}, 'outCubic');
+const dm = new THREE.MeshStandardMaterial({ color: 0x555555, roughness: 1, transparent: true, opacity: 0 });
+const drive = new THREE.Mesh(new THREE.PlaneGeometry(2200, 6000), dm);
+drive.rotation.x = -Math.PI/2; drive.position.set(0, -10, BD/2+3000);
+scene.add(drive);
+anim(drive, roadStart, 0.8, { opacity: 1 }, 'outCubic');
+
+function makeCar(x, z, color, idx) {
+  const g = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.BoxGeometry(650, 220, 1200), new THREE.MeshStandardMaterial({ color, roughness: 0.2, metalness: 0.5 }));
+  body.position.y = 150; g.add(body);
+  const cabin = new THREE.Mesh(new THREE.BoxGeometry(350, 130, 800), new THREE.MeshPhysicalMaterial({ color: 0x88ccff, transparent: true, opacity: 0.15 }));
+  cabin.position.set(0, 260, -60); g.add(cabin);
+  const wm = new THREE.MeshStandardMaterial({ color: 0x222222 });
+  for (const [wx, wz] of [[-280,-450],[280,-450],[-280,450],[280,450]]) {
+    const w = new THREE.Mesh(new THREE.CylinderGeometry(90, 90, 40, 6), wm);
+    w.rotation.x = Math.PI/2; w.position.set(wx, 60, wz); g.add(w);
+  }
+  g.position.set(x, -5, z + 5000);
+  scene.add(g);
+  anim(g, roadStart + 1.0 + idx*0.5, 1.5, { z: z }, 'outCubic');
+}
+makeCar(-1800, BD/2+2000, 0x224466, 0);
+makeCar(1800, BD/2+4000, 0x662222, 1);
+
+// ===== 路灯 =====
+const lightStart = roadStart + 2.5;
+anim({ phase: '灯光系统' }, lightStart, 0, {}, 'outCubic');
+for (const [lx, lz, i] of [[-5500, 4500, 0], [5500, 4500, 1]]) {
+  const pole = new THREE.Mesh(new THREE.CylinderGeometry(10, 18, 450, 5), new THREE.MeshStandardMaterial({ color: 0x555566, transparent: true, opacity: 0 }));
+  pole.position.set(lx, -100, lz); scene.add(pole);
+  anim(pole, lightStart + i*0.3, 0.6, { y: 225, opacity: 1 }, 'outBounce');
+  const lamp = new THREE.Mesh(new THREE.SphereGeometry(50, 6), new THREE.MeshBasicMaterial({ color: 0xffddaa, transparent: true, opacity: 0 }));
+  lamp.position.set(lx, 480, lz); scene.add(lamp);
+  anim(lamp, lightStart + 0.5 + i*0.3, 0.4, { opacity: 1 }, 'outCubic');
+  const pl = new THREE.PointLight(0xffddaa, 0, 5000, 2);
+  pl.position.set(lx, 400, lz); scene.add(pl);
+  anim(pl, lightStart + 0.8 + i*0.3, 0.8, { intensity: 1.8 }, 'outCubic');
+}
+
+// ===== 萤火虫 =====
+const ffStart = lightStart + 2.0;
+anim({ phase: '环境生态' }, ffStart, 0, {}, 'outCubic');
+(function() {
+  const n = 50;
+  const pos = new Float32Array(n*3); const data = [];
+  for (let i = 0; i < n; i++) {
+    const a = Math.random()*6.28, r = 3000+Math.random()*8000;
+    data.push({ a, r, s: 0.2+Math.random()*0.4, o: Math.random()*6.28, yb: 200+Math.random()*8000 });
+    pos[i*3]=Math.cos(a)*r; pos[i*3+1]=data[i].yb; pos[i*3+2]=Math.sin(a)*r;
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  const mat = new THREE.PointsMaterial({ size: 5, color: 0xffee44, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, sizeAttenuation: true });
+  const mesh = new THREE.Points(g, mat); scene.add(mesh);
+  const orig = new Float32Array(pos); let t = 0;
+  // 先渐显
+  anim(mat, ffStart, 1.5, { opacity: 0.5 }, 'outCubic');
+  function tick() {
+    t += 0.016; const p = mesh.geometry.attributes.position.array;
+    for (let i = 0; i < n; i++) {
+      const d = data[i], i3 = i*3;
+      p[i3] = orig[i3] + Math.sin(t*d.s+d.o)*200;
+      p[i3+1] = orig[i3+1] + Math.sin(t*d.s*0.6+d.o*1.3)*250;
+      p[i3+2] = orig[i3+2] + Math.cos(t*d.s*0.4+d.o*0.7)*200;
+    }
+    mesh.geometry.attributes.position.needsUpdate = true;
+    if (t < 600) requestAnimationFrame(tick);
+  }
+  setTimeout(tick, ffStart * 1000);
+})();
+
+// ===== 建筑外围发光 =====
+const glowStart = ffStart + 0.5;
+for (const [lx, lz] of [[-2500, BD/2+300], [2500, BD/2+300], [-2500, -BD/2-300], [2500, -BD/2-300]]) {
+  const pl = new THREE.PointLight(0xff8844, 0, 6000, 2);
+  pl.position.set(lx, 3000, lz);
+  scene.add(pl);
+  anim(pl, glowStart, 1.5, { intensity: 1.2 }, 'outCubic');
+}
+
+// ===== 最终完成 =====
+const endStart = glowStart + 2.0;
+anim({ phase: '施工完成' }, endStart, 0, {}, 'outCubic');
+const finale = { phase: '' };
+
+// ===== 动画引擎 =====
+let animTime = 0;
+let lastTime = 0;
+let started = false;
+let finalCameraPos = new THREE.Vector3(28000, 15000, 32000);
+let finalTarget = new THREE.Vector3(0, 5000, 0);
+
+function updateAnim(dt) {
+  if (!started) { started = true; animTime = 0; }
+  animTime += dt;
+
+  for (const a of animQueue) {
+    const local = animTime - a.start;
+    if (local < 0) continue;
+    const t = Math.min(1, local / a.duration);
+    const e = a.duration === 0 ? 1 : t;
+    let ev;
+    if (a.ease === 'outCubic') ev = easeOutCubic(e);
+    else if (a.ease === 'outElastic') ev = easeOutElastic(e);
+    else if (a.ease === 'outBounce') ev = easeOutBounce(e);
+    else ev = e;
+
+    const obj = a.obj;
+    if (obj.phase !== undefined) {
+      if (!a.done && e >= 1) {
+        document.getElementById('phaseText').textContent = '\u25A0 ' + obj.phase;
+        a.done = true;
+      }
+      continue;
+    }
+
+    for (const key in a.props) {
+      const targetVal = a.props[key];
+      if (key === 'opacity' && obj.material) {
+        obj.material.opacity = targetVal * ev;
+        obj.material.transparent = true;
+      } else if (key.startsWith('scale.')) {
+        const axis = key.split('.')[1];
+        obj.scale[axis] = targetVal * ev;
+      } else if (key === 'intensity') {
+        obj.intensity = targetVal * ev;
+      } else if (key === 'y' || key === 'x' || key === 'z') {
+        const from = a._from ? a._from[key] || 0 : 0;
+        if (!a._from) {
+          if (!a._from) a._from = {};
+          a._from[key] = obj.position[key];
+        }
+        const diff = targetVal - a._from[key];
+        obj.position[key] = a._from[key] + diff * ev;
+      }
+    }
+  }
+
+  // 进度条
+  const pct = Math.min(100, (animTime / endStart) * 100);
+  document.getElementById('progressBar').style.width = pct + '%';
+
+  // 最终完成后启用自动旋转
+  if (animTime > endStart + 1.0) {
+    controls.autoRotate = true;
+    document.getElementById('subText').textContent = '拖动查看 · 自动旋转中';
+    document.getElementById('phaseText').textContent = '\u2714 别墅建造完成';
+  } else {
+    const total = endStart + 2;
+    const p = animTime / total;
+    // 镜头拉远到最终位置
+    const startCam = new THREE.Vector3(5000, 3000, 6000);
+    camera.position.lerpVectors(startCam, finalCameraPos, Math.min(1, p * 1.5));
+    controls.target.lerpVectors(new THREE.Vector3(0, 0, 0), finalTarget, Math.min(1, p * 1.5));
+  }
+}
+
+// ===== 主循环 =====
+function animate(time) {
+  requestAnimationFrame(animate);
+  const dt = lastTime ? Math.min(0.05, (time - lastTime) / 1000) : 0.016;
+  lastTime = time;
+  updateAnim(dt);
+  controls.update();
+  renderer.render(scene, camera);
+}
+animate(0);
+
+addEventListener('resize', () => {
+  camera.aspect = innerWidth/innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+// 可点击交互提示
+document.addEventListener('click', () => { controls.autoRotate = !controls.autoRotate; });
+</script>
+</body>
+</html>

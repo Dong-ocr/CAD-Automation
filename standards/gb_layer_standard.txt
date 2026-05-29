@@ -1,0 +1,49 @@
+
+GB/T 50001-2017 房屋建筑制图统一标准 - 图层命名规范参考:
+
+常用图层命名:
+- 0               默认图层
+- A-WALL          墙体 (Architecture-Wall)
+- A-WALL-EXTR     外墙
+- A-WALL-INT      内墙  
+- A-DOOR          门
+- A-WINDOW        窗
+- A-FLOR          楼面
+- A-ROOF          屋顶
+- A-COLUMN        柱
+- A-BEAM          梁
+- A-STAIR         楼梯
+- A-FURN          家具
+- A-DIM           尺寸标注
+- A-TEXT          文字
+- A-HATCH         填充
+- S-LABEL         标注
+- G-ANNO          通用注释
+- A-GLAZ          玻璃幕墙
+- S-SLAB          结构板
+- S-FOOTING       基础
+- M-EQPM          设备
+
+颜色索引 (ACI):
+- 1 Red            红    轮廓线
+- 2 Yellow         黄    窗口/门
+- 3 Green          绿    尺寸标注
+- 4 Cyan           青    注释
+- 5 Blue           蓝    家具
+- 6 Magenta        洋红  设备
+- 7 White          白    默认
+- 8 Dark Gray      深灰  填充边界
+- 9 Light Gray     浅灰  填充
+
+线型:
+- CONTINUOUS       实线  默认
+- DASHED           虚线  隐藏/内部
+- CENTER           点划线 中心线
+- PHANTOM          双点划线 边界
+- DOT              点    ......
+
+线宽 (mm):
+- 0.00 = 默认
+- 0.05, 0.09, 0.13 (细线/标注)
+- 0.18, 0.25, 0.35 (中等/轮廓)
+- 0.50, 0.70, 1.00 (粗线/剖面)

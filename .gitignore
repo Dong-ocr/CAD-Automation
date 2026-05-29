@@ -17,3 +17,36 @@ _*.py
 _*.txt
 *.b64
 *.p64
+
+# Generated CAD files
+*.stl
+*.step
+*.stp
+*.igs
+*.brep
+*.fcstd
+*.FCStd
+*.FCBak
+
+# Output directory
+output/
+output/professional/*.stl
+output/professional/*.png
+output/professional/*.svg
+output/professional/*.pdf
+
+# FreeCAD installation (binary, ~2GB)
+FreeCAD/
+
+# Screenshots
+*.png
+*.jpg
+*.jpeg
+
+# Temp scripts
+scripts/_*.py
+scripts/_*.js
+
+# OS
+.DS_Store
+Thumbs.db

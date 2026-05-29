@@ -1,0 +1,98 @@
+[
+  {
+    "name": "DOOR-SINGLE",
+    "desc": "Single door",
+    "file": "DOOR-SINGLE.dxf",
+    "cat": "aec"
+  },
+  {
+    "name": "DOOR-DOUBLE",
+    "desc": "Double door",
+    "file": "DOOR-DOUBLE.dxf",
+    "cat": "aec"
+  },
+  {
+    "name": "WINDOW",
+    "desc": "Window",
+    "file": "WINDOW.dxf",
+    "cat": "aec"
+  },
+  {
+    "name": "STAIRCASE",
+    "desc": "Staircase",
+    "file": "STAIRCASE.dxf",
+    "cat": "aec"
+  },
+  {
+    "name": "COLUMN",
+    "desc": "Column",
+    "file": "COLUMN.dxf",
+    "cat": "aec"
+  },
+  {
+    "name": "TOILET",
+    "desc": "Toilet",
+    "file": "TOILET.dxf",
+    "cat": "aec"
+  },
+  {
+    "name": "SINK",
+    "desc": "Sink",
+    "file": "SINK.dxf",
+    "cat": "aec"
+  },
+  {
+    "name": "BED-DOUBLE",
+    "desc": "Double bed",
+    "file": "BED-DOUBLE.dxf",
+    "cat": "aec"
+  },
+  {
+    "name": "DESK",
+    "desc": "Desk",
+    "file": "DESK.dxf",
+    "cat": "aec"
+  },
+  {
+    "name": "CHAIR",
+    "desc": "Chair",
+    "file": "CHAIR.dxf",
+    "cat": "aec"
+  },
+  {
+    "name": "TABLE-ROUND",
+    "desc": "Round table",
+    "file": "TABLE-ROUND.dxf",
+    "cat": "aec"
+  },
+  {
+    "name": "DAM-SECTION",
+    "desc": "Dam section (SL 73)",
+    "file": "DAM-SECTION.dxf",
+    "cat": "sl73"
+  },
+  {
+    "name": "SLUICE-GATE",
+    "desc": "Sluice gate (SL 73)",
+    "file": "SLUICE-GATE.dxf",
+    "cat": "sl73"
+  },
+  {
+    "name": "PIPE-CROSS",
+    "desc": "Pipe crossing (SL 73)",
+    "file": "PIPE-CROSS.dxf",
+    "cat": "sl73"
+  },
+  {
+    "name": "VALVE",
+    "desc": "Valve (SL 73)",
+    "file": "VALVE.dxf",
+    "cat": "sl73"
+  },
+  {
+    "name": "PUMP",
+    "desc": "Pump (SL 73)",
+    "file": "PUMP.dxf",
+    "cat": "sl73"
+  }
+]

@@ -1,0 +1,67 @@
+﻿# CTB 打印样式配置 (AutoCAD Plot Style Table)
+# 用于控制 DXF/DWG 出图线宽
+# 在 AutoCAD 中: OPTIONS → Plot Style Table 加载
+
+# ====== 单色打印配置 (Monochrome.ctb) ======
+# 用途: 施工图黑白出图
+# 所有颜色映射为黑色，线宽按图层控制
+
+LAYER_COLOR = BLACK  # 所有颜色输出为黑色
+SCREENING = 100      # 100% 实心
+
+LINE_WEIGHTS:
+  0.09mm: "A-DIM A-TEXT A-ROOM A-HATCH A-ANNO H-CONTOUR H-ANNO"
+  0.13mm: "A-FURN A-WINDOW H-EQUIP H-PIPE"
+  0.18mm: "H-PIPE H-REBAR A-STAIR"
+  0.25mm: "A-DOOR A-WINDOW H-WATER-LINE H-ROAD"
+  0.35mm: "A-WALL-INNER A-COLS H-SLUICE"
+  0.50mm: "A-TITLE H-DAM-CREST"
+  0.70mm: "A-WALL-OUTER H-DAM-BODY"
+
+# ====== 彩色打印配置 (Color.ctb) ======
+# 用途: 彩色展示/汇报
+# 保留 ACI 颜色，线宽按图层控制
+
+COLOR_MAP:
+  ACI 1 (Red):   "A-WALL-OUTER H-DAM-BODY"     -> 0.70mm
+  ACI 2 (Yellow): "A-DOOR A-WINDOW H-SLUICE"   -> 0.25mm
+  ACI 3 (Green):  "A-DIM H-CONTOUR H-ROAD"     -> 0.09mm-0.25mm
+  ACI 4 (Cyan):   "A-ROOM A-ANNO H-PIPE H-ANNO" -> 0.09mm-0.18mm
+  ACI 5 (Blue):   "A-FURN H-WATER-LINE"         -> 0.13mm-0.25mm
+  ACI 6 (Magenta): "A-WALL-INNER A-COLS H-REBAR" -> 0.18mm-0.35mm
+  ACI 7 (White):  "A-TEXT A-TITLE H-EQUIP"      -> 0.09mm-0.50mm
+  ACI 8 (Dark Gray): "A-HATCH"                   -> 0.09mm
+
+# ====== CTB 生成脚本 (ezdxf) ======
+# ezdxf 不支持直接写 .ctb 文件
+# 可在 Python 中生成 .ctb 的 XML 替代方案:
+def gen_ctb_stb():
+    """生成 AutoCAD STB (命名打印样式) 参考"""
+    import xml.etree.ElementTree as ET
+    root = ET.Element("PlotStyleTable")
+    root.set("version", "1.0")
+    for name, color, lw, desc in [
+        ("外墙-粗", 1, 0.70, "A-WALL-OUTER"),
+        ("内墙-中", 6, 0.35, "A-WALL-INNER"),
+        ("门窗-普通", 2, 0.25, "A-DOOR A-WINDOW"),
+        ("家具-细", 5, 0.13, "A-FURN"),
+        ("标注-极细", 3, 0.09, "A-DIM A-TEXT"),
+    ]:
+        style = ET.SubElement(root, "Style")
+        ET.SubElement(style, "Name").text = name
+        ET.SubElement(style, "Color").text = str(color)
+        ET.SubElement(style, "Lineweight").text = str(lw)
+        ET.SubElement(style, "Description").text = desc
+    return root
+
+# ====== 实际应用 ======
+# 在 FreeCAD 中:
+# 1. 打开 DXF
+# 2. 文件 → 导出 → PDF
+# 3. 在页面设置中选择 CTB
+# 4. 或使用 TechDraw 工作台直接出图
+
+# 在 AutoCAD 中 (如果有):
+# 1. PAGESETUP → 选择绘图仪
+# 2. Plot style table → Monochrome.ctb
+# 3. 预览 → 确认线宽
