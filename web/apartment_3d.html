@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>?? 3D ? Interior 3D Viewer</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a12;color:#e0e0e0;font-family:Inter,Microsoft YaHei,system-ui,sans-serif;overflow:hidden;height:100vh;user-select:none}
+#cw{position:fixed;top:0;left:0;right:0;bottom:0}
+#hud{position:fixed;top:20px;left:24px;z-index:10;pointer-events:none}
+#hud h1{font-size:18px;font-weight:700;color:#fff;letter-spacing:2px}
+#hud .sub{font-size:9px;color:rgba(255,255,255,0.25);margin-top:2px}
+#info{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);z-index:10;padding:8px 16px;border-radius:8px;background:rgba(0,0,0,0.6);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,0.06);text-align:center;font-size:11px;pointer-events:none;white-space:nowrap}
+#info .nm{font-weight:700;color:#60a5fa}
+#info .ds{font-size:9px;color:rgba(255,255,255,0.35);margin-top:1px}
+#bar{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:10;display:flex;gap:4px;background:rgba(0,0,0,0.5);backdrop-filter:blur(12px);padding:4px;border-radius:10px;border:1px solid rgba(255,255,255,0.06)}
+.cb{background:rgba(255,255,255,0.06);border:none;color:rgba(255,255,255,0.5);padding:5px 12px;border-radius:7px;cursor:pointer;font-size:9px;font-weight:600;transition:all .2s}
+.cb:hover{background:rgba(255,255,255,0.12);color:#fff}
+.cb.on{background:rgba(96,165,250,0.2);color:#60a5fa}
+#ld{position:fixed;top:0;left:0;right:0;bottom:0;z-index:100;background:#0a0a12;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:12px;transition:opacity .5s}
+#ld.h{opacity:0;pointer-events:none}
+.sp{width:32px;height:32px;border-radius:50%;border:3px solid rgba(255,255,255,0.04);border-top-color:#60a5fa;animation:s 1s linear infinite}
+@keyframes s{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div id="ld"><div class="sp"></div><p>Loading scene ...</p></div>
+<div id="cw"></div>
+<div id="hud"><h1></h1><div class="sub"></div></div>
+<div id="info"><span class="nm">Drag to rotate</span> <span class="ds">Scroll to zoom</span></div>
+<div id="bar"><button class="cb on" id="bRot">Auto</button><button class="cb" id="bReset">Reset</button><button class="cb" id="bTop">Top</button></div>
+
+<script type="importmap">{"imports":{"three":"../lib/three.module.js","three/addons/":"../lib/"}}</script>
+<script type="module">
+import * as T from "three";
+import { OrbitControls } from "three/addons/OrbitControls.js";
+
+const cw=document.getElementById("cw"),W=cw.clientWidth,H=cw.clientHeight;
+const scene=new T.Scene();scene.background=new T.Color(0x0a0a12);
+const camera=new T.PerspectiveCamera(45,W/H,10,50000);camera.position.set(8000,7000,10000);
+const renderer=new T.WebGLRenderer({antialias:true});
+renderer.setSize(W,H);renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.shadowMap.enabled=true;renderer.shadowMap.type=T.PCFSoftShadowMap;
+renderer.toneMapping=T.ACESFilmicToneMapping;renderer.toneMappingExposure=1.0;
+cw.appendChild(renderer.domElement);
+const controls=new OrbitControls(camera,renderer.domElement);
+controls.target.set(5000,0,5000);controls.enableDamping=true;controls.dampingFactor=0.08;
+controls.minDistance=2000;controls.maxDistance=50000;controls.maxPolarAngle=Math.PI/2.1;
+controls.autoRotate=true;controls.autoRotateSpeed=0.6;controls.update();
+
+const al=new T.AmbientLight(0x334466,0.5);scene.add(al);
+const hl=new T.HemisphereLight(0x8899cc,0x223366,0.6);scene.add(hl);
+const dl=new T.DirectionalLight(0xffeedd,1.2);dl.position.set(15000,20000,10000);
+dl.castShadow=true;dl.shadow.mapSize.width=1024;dl.shadow.mapSize.height=1024;
+scene.add(dl);scene.add(dl.target);
+
+const grid=new T.GridHelper(15000,30,0x333355,0x222244);grid.position.y=-10;scene.add(grid);
+const roomColors={
+    "\u5ba2\u5385":0x3b82f6,"\u9910\u5385":0x10b981,"\u4e3b\u5367":0x8b5cf6,
+    "\u6b21\u5367":0xf59e0b,"\u5385\u53a8":0xef4444,"\u536b\u751f\u95f4":0x06b6d4,"\u8fc7\u9053":0x6b7280
+};
+const roomNames={"\u5ba2\u5385":"Living Room","\u9910\u5385":"Dining Room","\u4e3b\u5367":"Master Bedroom","\u6b21\u5367":"Bedroom","\u5385\u53a8":"Kitchen","\u536b\u751f\u95f4":"Bathroom","\u8fc7\u9053":"Hallway"};
+
+const objs=[];const infos={};
+function add(m,d){scene.add(m);objs.push(m);if(d){m.userData=d;infos[m.uuid]=d}}
+
+// Load scene data
+fetch("apartment_scene.json").then(r=>r.json()).then(data=>{
+    document.getElementById("hud").querySelector("h1").textContent=data.name;
+    document.getElementById("hud").querySelector(".sub").textContent=data.rooms.length+" rooms, "+data.furniture.length+" furniture";
+    
+    // Walls
+    const wallHeight=2800;
+    data.walls.forEach((w,i)=>{
+        const dx=w.end[0]-w.start[0],dz=w.end[1]-w.start[1];
+        const len=Math.sqrt(dx*dx+dz*dz);
+        if(len<1)return;
+        const mx=(w.start[0]+w.end[0])/2,mz=(w.start[1]+w.end[1])/2;
+        const angle=Math.atan2(dx,dz);
+        const g=new T.BoxGeometry(len,w.thickness,wallHeight);
+        const mt=w.type==="??"?0x94a3b8:0x64748b;
+        const m=new T.Mesh(g,new T.MeshStandardMaterial({color:mt,roughness:0.7,metalness:0.05}));
+        m.position.set(mx,0,mz);m.rotation.y=angle;m.castShadow=true;m.receiveShadow=true;
+        add(m,{name:"Wall "+(i+1),desc:w.type});
+    });
+    
+    // Room floors
+    const floorMat=new T.MeshStandardMaterial({roughness:0.8,metalness:0,transparent:true,opacity:0.15,side:T.DoubleSide});
+    data.rooms.forEach(r=>{
+        if(r.corners.length<3)return;
+        const shape=new T.Shape();
+        r.corners.forEach((c,j)=>{j===0?shape.moveTo(c[0],c[1]):shape.lineTo(c[0],c[1])});
+        const g=new T.ShapeGeometry(shape);
+        const color=roomColors[r.name]||0x6b7280;
+        const m=new T.Mesh(g,new T.MeshStandardMaterial({color,roughness:0.8,metalness:0,transparent:true,opacity:0.12,side:T.DoubleSide}));
+        m.rotation.x=-Math.PI/2;m.position.y=-5;m.receiveShadow=true;
+        add(m,{name:r.name,desc:r.type+" \u00b7 "+(r.corners.length)+" vertices"});
+    });
+    
+    // Room labels (sprites)
+    data.rooms.forEach(r=>{
+        const cx=r.corners.reduce((s,c)=>s+c[0],0)/r.corners.length;
+        const cz=r.corners.reduce((s,c)=>s+c[1],0)/r.corners.length;
+        const canvas=document.createElement("canvas");canvas.width=256;canvas.height=64;
+        const ctx=canvas.getContext("2d");
+        ctx.fillStyle="rgba(0,0,0,0)";ctx.fillRect(0,0,256,64);
+        ctx.fillStyle="rgba(255,255,255,0.12)";ctx.font="bold 28px Inter,Microsoft YaHei,sans-serif";ctx.textAlign="center";
+        ctx.fillText(r.name,128,42);
+        const tex=new T.CanvasTexture(canvas);tex.needsUpdate=true;
+        const mat=new T.SpriteMaterial({map:tex,transparent:true,depthTest:false});
+        const sp=new T.Sprite(mat);sp.position.set(cx,wallHeight+200,cz);sp.scale.set(3000,750,1);
+        add(sp);
+    });
+    
+    // Furniture
+    const furnMat=new T.MeshStandardMaterial({roughness:0.5,metalness:0.1});
+    data.furniture.forEach(f=>{
+        const w=f.width||800,d=f.depth||800,h=f.height||800;
+        const g=new T.BoxGeometry(w,h,d);
+        const color=parseInt(f.color.replace("#",""),16)||0x8B7355;
+        const m=new T.Mesh(g,new T.MeshStandardMaterial({color,roughness:0.6,metalness:0.05}));
+        m.position.set(f.x||0,h/2,f.y||0);m.rotation.y=(f.rotation||0)*Math.PI/180;
+        m.castShadow=true;m.receiveShadow=true;
+        add(m,{name:f.name,desc:f.category+" \u00b7 "+Math.round(w/10)/100+"m x "+Math.round(d/10)/100+"m"});
+    });
+    
+    // Interaction
+    const rc=new T.Raycaster(),pt=new T.Vector2();
+    renderer.domElement.addEventListener("pointermove",e=>{pt.x=(e.clientX/cw.clientWidth)*2-1;pt.y=-(e.clientY/cw.clientHeight)*2+1});
+    renderer.domElement.addEventListener("click",()=>{
+        rc.setFromCamera(pt,camera);const hits=rc.intersectObjects(objs,false);
+        for(const h of hits){const u=h.object.uuid;if(infos[u]){document.getElementById("info").innerHTML='<span class="nm">'+infos[u].name+'</span><div class="ds">'+infos[u].desc+"</div>";return}}
+    });
+    
+    document.getElementById("ld").classList.add("h");
+    console.log("Scene loaded: "+objs.length+" objects");
+}).catch(e=>{console.error("Load failed:",e);document.getElementById("ld").querySelector("p").textContent="Load failed!"});
+
+// Controls
+document.getElementById("bRot").addEventListener("click",()=>{controls.autoRotate=!controls.autoRotate;document.getElementById("bRot").classList.toggle("on")});
+document.getElementById("bReset").addEventListener("click",()=>{camera.position.set(8000,7000,10000);controls.target.set(5000,0,5000);controls.update()});
+document.getElementById("bTop").addEventListener("click",()=>{camera.position.set(5000,15000,5001);controls.target.set(5000,0,5000);controls.update()});
+window.addEventListener("resize",()=>{const w=cw.clientWidth,h=cw.clientHeight;camera.aspect=w/h;camera.updateProjectionMatrix();renderer.setSize(w,h)});
+
+function anim(){requestAnimationFrame(anim);controls.update();renderer.render(scene,camera)}
+anim();
+</script>
+</body>
+</html>

@@ -342,7 +342,7 @@ def render_svg(proj: InteriorProject, output_path: str) -> str:
         ax.axis("off")
 
         backend = MatplotlibBackend(ax)
-        Frontend(RenderContext(doc2), backend).draw(doc2.modelspace())
+        Frontend(RenderContext(doc2), backend).draw_layout(doc2.modelspace())
 
         if output_path.endswith(".svg"):
             fig.savefig(output_path, format="svg", bbox_inches="tight", pad_inches=0)
