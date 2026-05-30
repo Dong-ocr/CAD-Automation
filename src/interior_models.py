@@ -314,6 +314,57 @@ def create_apartment_template_fixed() -> InteriorProject:
     for s, e in interior_walls:
         proj.walls.append(Wall(Point2D(s[0], s[1]), Point2D(e[0], e[1]),
                                thickness=150, wall_type=WallType.INTERIOR))
+
+    # 添加家具
+    furniture_layout = {
+        chr(23458)+chr(21381): [  # 客厅
+            (FurnitureCategory.SOFA, 2800, 900, chr(109)+chr(111)+chr(100)+chr(101)+chr(114)+chr(110), chr(76)+chr(22411)+chr(24067)+chr(33402)+chr(27801)+chr(21457)),
+            (FurnitureCategory.TABLE, 1400, 800, chr(109)+chr(111)+chr(100)+chr(101)+chr(114)+chr(110), chr(29627)+chr(29820)+chr(33529)+chr(20960)),
+            (FurnitureCategory.CABINET, 2000, 500, chr(109)+chr(111)+chr(100)+chr(101)+chr(114)+chr(110), chr(30005)+chr(35270)+chr(26588)),
+        ],
+        chr(20027)+chr(21351): [  # 主卧
+            (FurnitureCategory.BED, 2000, 1800, chr(109)+chr(111)+chr(100)+chr(101)+chr(114)+chr(110), chr(21452)+chr(20154)+chr(24202)),
+            (FurnitureCategory.CABINET, 1800, 600, chr(109)+chr(111)+chr(100)+chr(101)+chr(114)+chr(110), chr(34915)+chr(26588)),
+            (FurnitureCategory.TABLE, 500, 500, chr(109)+chr(111)+chr(100)+chr(101)+chr(114)+chr(110), chr(24202)+chr(22836)+chr(26588)),
+        ],
+        chr(27425)+chr(21351): [  # 次卧
+            (FurnitureCategory.BED, 2000, 1500, chr(109)+chr(111)+chr(100)+chr(101)+chr(114)+chr(110), chr(21333)+chr(20154)+chr(24202)),
+            (FurnitureCategory.CABINET, 1200, 600, chr(109)+chr(111)+chr(100)+chr(101)+chr(114)+chr(110), chr(34915)+chr(26588)),
+        ],
+        chr(39184)+chr(21381): [  # 餐厅
+            (FurnitureCategory.TABLE, 1400, 800, chr(109)+chr(111)+chr(100)+chr(101)+chr(114)+chr(110), chr(39184)+chr(26700)),
+            (FurnitureCategory.CHAIR, 500, 500, chr(109)+chr(111)+chr(100)+chr(101)+chr(114)+chr(110), chr(39184)+chr(26885)),
+        ],
+        chr(21416)+chr(25151): [  # 厨房
+            (FurnitureCategory.TABLE, 1200, 600, chr(109)+chr(111)+chr(100)+chr(101)+chr(114)+chr(110), chr(25805)+chr(20316)+chr(21488)),
+            (FurnitureCategory.CABINET, 800, 400, chr(109)+chr(111)+chr(100)+chr(101)+chr(114)+chr(110), chr(21520)+chr(26588)),
+        ],
+        chr(21355)+chr(29983)+chr(38388): [  # 卫生间
+            (FurnitureCategory.SANITARY, 600, 600, chr(109)+chr(111)+chr(100)+chr(101)+chr(114)+chr(110), chr(27927)+chr(25163)+chr(21488)),
+            (FurnitureCategory.SANITARY, 400, 700, chr(109)+chr(111)+chr(100)+chr(101)+chr(114)+chr(110), chr(39532)+chr(27133)),
+        ],
+    }
+    for r in proj.rooms:
+        items = furniture_layout.get(r.name, [])
+        if not items: continue
+        xs = [p.x for p in r.corners]
+        ys = [p.y for p in r.corners]
+        rx, ry = min(xs), min(ys)
+        rw, rd = max(xs)-rx, max(ys)-ry
+        x_off = rx + 300
+        y_off = ry + 300
+        for cat, w, d, style, name in items:
+            if x_off + w > rx + rw - 300:
+                x_off = rx + 300
+                y_off += d + 200
+            if y_off + d > ry + rd - 300:
+                continue
+            proj.furniture.append(FurnitureItem(
+                name=name, category=cat, width=w, depth=d,
+                x=x_off + w/2, y=y_off + d/2,
+                rotation=0.0, room=r.name, color='#8B7355'
+            ))
+            x_off += w + 200
     return proj
 
 # ── 测试 ──────────────────────────────────────────────────
