@@ -59,7 +59,7 @@ const camera=new T.PerspectiveCamera(45,W/H,100,400000);camera.position.set(3500
 const renderer=new T.WebGLRenderer({antialias:true});
 renderer.setSize(W,H);renderer.setPixelRatio(Math.min(devicePixelRatio,2));
 renderer.shadowMap.enabled=true;renderer.shadowMap.type=T.PCFSoftShadowMap;
-renderer.toneMapping=T.ACESFilmicToneMapping;renderer.toneMappingExposure=1.2;
+renderer.toneMapping=T.ACESFilmicToneMapping;renderer.toneMappingExposure=1.0;
 cw.appendChild(renderer.domElement);
 const controls=new OrbitControls(camera,renderer.domElement);
 controls.target.set(0,6000,0);controls.enableDamping=true;controls.dampingFactor=0.06;
@@ -68,13 +68,13 @@ controls.autoRotate=true;controls.autoRotateSpeed=0.8;controls.update();
 
 // Lights
 const al=new T.AmbientLight(0x223355,0.4);scene.add(al);
-const hl=new T.HemisphereLight(0x8899cc,0x223366,0.5);scene.add(hl);
+const hl=new T.HemisphereLight(0x87ceeb,0x362d1a,0.6);scene.add(hl);
 const sl=new T.DirectionalLight(0xffeedd,1.8);
 sl.position.set(60000,80000,40000);sl.castShadow=true;
 sl.shadow.mapSize.width=2048;sl.shadow.mapSize.height=2048;
 sl.shadow.camera.near=100;sl.shadow.camera.far=200000;
 sl.shadow.camera.left=-50000;sl.shadow.camera.right=50000;
-sl.shadow.camera.top=50000;sl.shadow.camera.bottom=-50000;
+sl.shadow.camera.top=50000;sl.shadow.camera.bottom=-50000;sl.shadow.bias=-0.001;
 scene.add(sl);scene.add(sl.target);
 const bl=new T.DirectionalLight(0x4488ff,0.3);bl.position.set(-40000,30000,-50000);scene.add(bl);
 const fl=new T.DirectionalLight(0x4488ff,0.2);fl.position.set(-30000,20000,50000);scene.add(fl);
@@ -84,11 +84,11 @@ const M={};
 M.ground=new T.MeshStandardMaterial({color:0x2a5a2a,roughness:0.9,metalness:0});
 M.slab=new T.MeshStandardMaterial({color:0x3a3a42,roughness:0.6,metalness:0.1});
 M.wall=new T.MeshStandardMaterial({color:0xd8d4cc,roughness:0.7,metalness:0});
-M.glass=new T.MeshPhysicalMaterial({color:0x88ccff,roughness:0.05,metalness:0,transparent:true,opacity:0.2,ior:1.5,side:T.DoubleSide});
+M.glass=new T.MeshPhysicalMaterial({color:0x88ccff,roughness:0.05,metalness:0,transparent:true,opacity:0.15,ior:1.5,envMapIntensity:1.2,clearcoat:0.1,side:T.DoubleSide});
 M.frame=new T.MeshStandardMaterial({color:0x444455,roughness:0.5,metalness:0.3});
 M.deck=new T.MeshStandardMaterial({color:0x7a6a4a,roughness:0.85,metalness:0});
 M.pool=new T.MeshStandardMaterial({color:0xc8c0b8,roughness:0.9,metalness:0});
-M.water=new T.MeshPhysicalMaterial({color:0x1a7a9a,roughness:0,metalness:0,transparent:true,opacity:0.6,ior:1.33});
+M.water=new T.MeshPhysicalMaterial({color:0x1a7a9a,roughness:0.05,metalness:0,transparent:true,opacity:0.55,ior:1.33,envMapIntensity:0.8});
 M.plight=new T.MeshStandardMaterial({color:0xffdd88,roughness:0.3,metalness:0,emissive:0xffdd88,emissiveIntensity:0.3});
 M.col=new T.MeshStandardMaterial({color:0x889098,roughness:0.5,metalness:0.2});
 M.stairs=new T.MeshStandardMaterial({color:0x7a6a4a,roughness:0.8,metalness:0});
@@ -96,7 +96,7 @@ M.wood=new T.MeshStandardMaterial({color:0x6b3a1a,roughness:0.7,metalness:0});
 M.dark=new T.MeshStandardMaterial({color:0x4a3020,roughness:0.7,metalness:0});
 M.tt=new T.MeshStandardMaterial({color:0x4a3525,roughness:0.9,metalness:0});
 M.tc=new T.MeshStandardMaterial({color:0x2a6b2a,roughness:0.8,metalness:0});
-M.car=new T.MeshStandardMaterial({color:0xbb2222,roughness:0.3,metalness:0.6});
+M.car=new T.MeshPhysicalMaterial({color:0xcc2222,roughness:0.15,metalness:0.7,clearcoat:0.5,clearcoatRoughness:0.3});
 M.cg=new T.MeshPhysicalMaterial({color:0x1a2a3a,roughness:0,metalness:0.1,transparent:true,opacity:0.35,ior:1.5});
 M.roof=new T.MeshStandardMaterial({color:0x4a4a4a,roughness:0.7,metalness:0.1});
 M.lit=new T.MeshStandardMaterial({color:0xffeedd,emissive:0xffeedd,emissiveIntensity:3});
@@ -143,7 +143,7 @@ bx(4500,1800,700,M.car,7000,-14000,350,4);bx(2500,1500,300,M.cg,7800,-13500,700,
 [[-1400,-600],[1400,-600],[-1400,600],[1400,600]].forEach(([wx,wz])=>{cy(180,180,120,new T.MeshStandardMaterial({color:0x111111,roughness:0.9}),7000+wx,-14000+wz,0,4);cy(80,80,125,new T.MeshStandardMaterial({color:0x555555,roughness:0.5,metalness:0.3}),7000+wx,-14000+wz,0,4)});
 
 // Grid
-const grid=new T.GridHelper(80000,40,0x333355,0x222244);grid.position.y=5;scene.add(grid);
+const grid=new T.GridHelper(80000,40,0x445577,0x334466);grid.position.y=5;scene.add(grid);
 
 // Stars
 const sc=2000;const sg=new T.BufferGeometry();const sp2=new Float32Array(sc*3);const ss2=new Float32Array(sc);
@@ -152,7 +152,7 @@ sg.setAttribute("position",new T.BufferAttribute(sp2,3));sg.setAttribute("size",
 const sm2=new T.PointsMaterial({color:0xffffff,size:2,transparent:true,opacity:0.7,sizeAttenuation:true});const stars=new T.Points(sg,sm2);scene.add(stars);
 
 // Moon
-const moon=new T.Mesh(new T.SphereGeometry(1200,24,16),new T.MeshStandardMaterial({color:0xddddcc,roughness:0.9,metalness:0,emissive:0x888877,emissiveIntensity:0.1}));moon.position.set(40000,50000,-70000);scene.add(moon);
+const moon=new T.Mesh(new T.SphereGeometry(1200,24,16),new T.MeshStandardMaterial({color:0xeee8d5,roughness:0.8,metalness:0,emissive:0xccc8b0,emissiveIntensity:0.3));moon.position.set(40000,50000,-70000);scene.add(moon);
 
 // Interaction
 const rc=new T.Raycaster(),pt=new T.Vector2();
