@@ -1,0 +1,298 @@
+﻿import os, json
+
+script_dir = os.path.dirname(os.path.abspath(__file__))
+wp = os.path.dirname(script_dir)
+out_dir = os.path.join(wp, "web")
+out_path = os.path.join(out_dir, "cliff_villa_ultra.html")
+
+# The complete HTML
+HTML = r"""<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>CLIFF VILLA ULTRA</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#080b16;color:#fff;font-family:Inter,'Microsoft YaHei',system-ui,sans-serif;overflow:hidden;height:100vh;user-select:none}
+#cw{position:fixed;top:0;left:0;right:0;bottom:0}
+#ld{position:fixed;top:0;left:0;right:0;bottom:0;z-index:999;background:#080b16;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:16px;transition:opacity .8s}
+#ld.h{opacity:0;pointer-events:none}
+.sp{width:40px;height:40px;border-radius:50%;border:3px solid rgba(255,255,255,0.04);border-top-color:#60a5fa;animation:s 1s linear infinite}
+@keyframes s{to{transform:rotate(360deg)}}
+#ld p{font-size:12px;color:rgba(255,255,255,0.3);letter-spacing:3px}
+#hud{position:fixed;top:24px;left:28px;z-index:10;pointer-events:none}
+#hud h1{font-size:22px;font-weight:800;background:linear-gradient(135deg,#fff 0%,#60a5fa 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;letter-spacing:4px}
+#hud .sub{font-size:10px;color:rgba(255,255,255,0.25);letter-spacing:3px;margin-top:2px}
+#info{position:fixed;bottom:100px;left:50%;transform:translateX(-50%);z-index:10;padding:12px 24px;border-radius:12px;background:rgba(0,0,0,0.65);backdrop-filter:blur(16px);border:1px solid rgba(255,255,255,0.06);text-align:center;pointer-events:none;min-width:180px}
+#info .nm{font-size:13px;font-weight:700;color:#e0e0e0}
+#info .ds{font-size:10px;color:rgba(255,255,255,0.35);margin-top:2px}
+#info .spacer{font-size:9px;color:rgba(255,255,255,0.15);margin-top:4px}
+#bar{position:fixed;bottom:28px;left:50%;transform:translateX(-50%);z-index:10;display:flex;gap:4px;background:rgba(0,0,0,0.55);backdrop-filter:blur(16px);padding:6px;border-radius:14px;border:1px solid rgba(255,255,255,0.06)}
+.cb{background:rgba(255,255,255,0.06);border:none;color:rgba(255,255,255,0.45);padding:7px 14px;border-radius:9px;cursor:pointer;font-size:10px;font-weight:600;transition:all .25s;letter-spacing:1px}
+.cb:hover{background:rgba(255,255,255,0.12);color:#fff}
+.cb.on{background:rgba(96,165,250,0.15);color:#60a5fa}
+#side{position:fixed;right:18px;top:50%;transform:translateY(-50%);z-index:10;display:flex;flex-direction:column;gap:5px}
+.sb{display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:8px;cursor:pointer;font-size:9px;background:rgba(0,0,0,0.5);backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,0.06);color:rgba(255,255,255,0.35);transition:all .25s;font-weight:500;width:90px}
+.sb:hover{background:rgba(255,255,255,0.08)}
+.sb .dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.sb.on .dot{background:#60a5fa;box-shadow:0 0 8px rgba(96,165,250,0.6)}
+.sb.off .dot{background:#333}
+#timec{position:fixed;bottom:78px;right:24px;z-index:10;display:flex;align-items:center;gap:8px;background:rgba(0,0,0,0.5);backdrop-filter:blur(10px);padding:8px 14px;border-radius:10px;border:1px solid rgba(255,255,255,0.06)}
+#timec label{font-size:9px;color:rgba(255,255,255,0.35);letter-spacing:1px}
+#timec input[type=range]{width:80px;height:3px;-webkit-appearance:none;background:rgba(255,255,255,0.1);border-radius:2px;outline:none}
+#timec input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;border-radius:50%;background:#60a5fa;cursor:pointer}
+#timec span{font-size:10px;color:rgba(255,255,255,0.5);min-width:32px;text-align:center}
+#stats{position:fixed;top:24px;right:18px;z-index:10;font-size:9px;color:rgba(255,255,255,0.15);text-align:right;line-height:1.6;pointer-events:none}
+#stats b{color:rgba(255,255,255,0.35)}
+</style>
+</head>
+<body>
+<div id="ld"><div class="sp"></div><p>LOADING SCENE</p></div>
+<div id="cw"></div>
+<div id="hud"><h1>CLIFF VILLA</h1><div class="sub">ULTRA · THREE.JS FLAGSHIP</div></div>
+<div id="side">
+  <div class="sb on" data-l="0"><span class="dot"></span>Structure</div>
+  <div class="sb on" data-l="1"><span class="dot"></span>Glass</div>
+  <div class="sb on" data-l="2"><span class="dot"></span>Water</div>
+  <div class="sb on" data-l="3"><span class="dot"></span>Interior</div>
+  <div class="sb on" data-l="4"><span class="dot"></span>Landscape</div>
+  <div class="sb on" data-l="5"><span class="dot"></span>FX</div>
+</div>
+<div id="info"><span class="nm">CLIFF VILLA</span><div class="ds">Drag · Scroll · Click objects</div></div>
+<div id="timec"><label>☀</label><input type="range" id="timeSlider" min="0" max="100" value="65"><span id="timeLabel">15:36</span></div>
+<div id="bar">
+  <button class="cb on" id="bRot">Auto</button>
+  <button class="cb" id="bRain">Rain</button>
+  <button class="cb" id="bNight">Night</button>
+  <button class="cb" id="bSnap">Snap</button>
+  <button class="cb" id="bFly">Fly</button>
+</div>
+<div id="stats"><span id="fps">--</span> FPS · <span id="objCount">--</span> objects</div>
+
+<script type="importmap">{"imports":{"three":"../lib/three.module.js","three/addons/":"../lib/"}}</script>
+<script type="module">
+import * as T from "three";
+import { OrbitControls } from "three/addons/OrbitControls.js";
+import { EffectComposer } from "three/addons/EffectComposer.js";
+import { RenderPass } from "three/addons/RenderPass.js";
+import { UnrealBloomPass } from "three/addons/UnrealBloomPass.js";
+import { OutputPass } from "three/addons/OutputPass.js";
+
+const cw=document.getElementById("cw"),W=cw.clientWidth,H=cw.clientHeight;
+const scene=new T.Scene();scene.background=new T.Color(0x080b16);
+scene.fog=new T.FogExp2(0x080b16,0.0000035);
+const camera=new T.PerspectiveCamera(42,W/H,10,400000);camera.position.set(32000,25000,38000);
+const renderer=new T.WebGLRenderer({antialias:true,powerPreference:"high-performance"});
+renderer.setSize(W,H);renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.shadowMap.enabled=true;renderer.shadowMap.type=T.PCFSoftShadowMap;
+renderer.toneMapping=T.ACESFilmicToneMapping;renderer.toneMappingExposure=1.0;
+renderer.outputColorSpace=T.SRGBColorSpace;
+cw.appendChild(renderer.domElement);
+const controls=new OrbitControls(camera,renderer.domElement);
+controls.target.set(0,6000,0);controls.enableDamping=true;controls.dampingFactor=0.07;
+controls.minDistance=6000;controls.maxDistance=130000;controls.maxPolarAngle=Math.PI/2.1;
+controls.autoRotate=true;controls.autoRotateSpeed=0.6;controls.update();
+
+// Post-processing
+const composer=new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene,camera));
+const bloom=new UnrealBloomPass(new T.Vector2(W,H),0.4,0.2,0.1);
+composer.addPass(bloom);
+composer.addPass(new OutputPass());
+
+// Lights
+const al=new T.AmbientLight(0x1a2a4a,0.5);scene.add(al);
+const hl=new T.HemisphereLight(0x87ceeb,0x362d1a,0.6);scene.add(hl);
+const sl=new T.DirectionalLight(0xffeedd,2.0);
+sl.position.set(60000,80000,30000);sl.castShadow=true;
+sl.shadow.mapSize.width=2048;sl.shadow.mapSize.height=2048;
+sl.shadow.camera.near=100;sl.shadow.camera.far=200000;
+sl.shadow.camera.left=-50000;sl.shadow.camera.right=50000;
+sl.shadow.camera.top=50000;sl.shadow.camera.bottom=-50000;sl.shadow.bias=-0.001;
+scene.add(sl);scene.add(sl.target);
+const bl=new T.DirectionalLight(0x4488ff,0.25);bl.position.set(-40000,20000,-50000);scene.add(bl);
+const fl=new T.DirectionalLight(0x4488ff,0.15);fl.position.set(-20000,10000,60000);scene.add(fl);
+// Accent lights
+const wl1=new T.PointLight(0xff8844,0.8,30000);wl1.position.set(-3000,3500,2000);scene.add(wl1);
+const wl2=new T.PointLight(0xff8844,0.6,30000);wl2.position.set(3000,3500,2000);scene.add(wl2);
+const wl3=new T.PointLight(0xff6644,0.4,20000);wl3.position.set(0,2000,6000);scene.add(wl3);
+
+// Materials
+const M={};
+M.ground=new T.MeshStandardMaterial({color:0x2a5a2a,roughness:0.9,metalness:0});
+M.groundD=new T.MeshStandardMaterial({color:0x1a3a1a,roughness:0.95,metalness:0});
+M.slab=new T.MeshStandardMaterial({color:0x3a3a42,roughness:0.6,metalness:0.1});
+M.wall=new T.MeshStandardMaterial({color:0xd8d4cc,roughness:0.7,metalness:0});
+M.wallD=new T.MeshStandardMaterial({color:0x8a8a8a,roughness:0.75,metalness:0.05});
+M.glass=new T.MeshPhysicalMaterial({color:0x88ccff,roughness:0.05,metalness:0,transparent:true,opacity:0.12,ior:1.5,envMapIntensity:1.5,clearcoat:0.1,side:T.DoubleSide});
+M.frame=new T.MeshStandardMaterial({color:0x444455,roughness:0.5,metalness:0.3});
+M.deck=new T.MeshStandardMaterial({color:0x7a6a4a,roughness:0.85,metalness:0});
+M.pool=new T.MeshStandardMaterial({color:0x8a9aaa,roughness:0.5,metalness:0.1});
+M.water=new T.MeshPhysicalMaterial({color:0x1a7a9a,roughness:0.05,metalness:0,transparent:true,opacity:0.5,ior:1.33,envMapIntensity:0.8});
+M.col=new T.MeshStandardMaterial({color:0x889098,roughness:0.5,metalness:0.2});
+M.stairs=new T.MeshStandardMaterial({color:0x7a6a4a,roughness:0.8,metalness:0});
+M.wood=new T.MeshStandardMaterial({color:0x6b3a1a,roughness:0.7,metalness:0});
+M.dark=new T.MeshStandardMaterial({color:0x4a3020,roughness:0.7,metalness:0});
+M.roof=new T.MeshStandardMaterial({color:0x4a4a4a,roughness:0.7,metalness:0.1});
+M.tt=new T.MeshStandardMaterial({color:0x4a3525,roughness:0.9,metalness:0});
+M.tc=new T.MeshStandardMaterial({color:0x2a6b2a,roughness:0.8,metalness:0});
+M.car=new T.MeshPhysicalMaterial({color:0xcc2222,roughness:0.15,metalness:0.7,clearcoat:0.5,clearcoatRoughness:0.3});
+M.cg=new T.MeshPhysicalMaterial({color:0x1a2a3a,roughness:0,metalness:0.1,transparent:true,opacity:0.3,ior:1.5});
+M.light=new T.MeshStandardMaterial({color:0xffdd88,roughness:0.3,metalness:0,emissive:0xffdd88,emissiveIntensity:0.5});
+M.road=new T.MeshStandardMaterial({color:0x3a3a42,roughness:0.9,metalness:0});
+M.rail=new T.MeshStandardMaterial({color:0x555566,roughness:0.4,metalness:0.3});
+
+// Layer system
+const L={0:[],1:[],2:[],3:[],4:[],5:[]};
+function a(m,l){L[l].push(m);scene.add(m);return m}
+function bx(w,d,h,mt,x,y,z,l){const g=new T.BoxGeometry(w,h,d);const m=new T.Mesh(g,mt);m.position.set(x,y,z);m.castShadow=true;m.receiveShadow=true;return a(m,l)}
+function cy(rt,rb,h,mt,x,y,z,l){const g=new T.CylinderGeometry(rt,rb,h,24);const m=new T.Mesh(g,mt);m.position.set(x,y,z);m.castShadow=true;m.receiveShadow=true;return a(m,l)}
+function sp(r,mt,x,y,z,l){const g=new T.SphereGeometry(r,16,12);const m=new T.Mesh(g,mt);m.position.set(x,y,z);m.castShadow=true;return a(m,l)}
+
+// Terrain
+const tg=new T.PlaneGeometry(140000,120000);
+const tmm=new T.Mesh(tg,M.ground);tmm.position.set(0,-30,0);tmm.rotation.x=-Math.PI/2;tmm.receiveShadow=true;a(tmm,0);
+for(let i=0;i<60;i++){const x=(Math.random()-0.5)*90000,z=(Math.random()-0.5)*75000;const g2=new T.PlaneGeometry(2000+Math.random()*6000,2000+Math.random()*6000);const m2=new T.Mesh(g2,i%3===0?M.ground:M.groundD);m2.position.set(x,-28,z);m2.rotation.x=-Math.PI/2;m2.rotation.z=Math.random()*0.1;a(m2,4)}
+
+// Main plateau
+bx(42000,34000,400,M.slab,0,200,0,0);
+bx(5000,300,3400,M.wallD,-2800,-7700,200,0);bx(5000,300,3400,M.wallD,2800,-7700,200,0);
+bx(3400,300,5000,M.wallD,-2800,300,200,0);bx(3400,300,5000,M.wallD,2800,300,200,0);
+bx(26000,14000,300,M.slab,2000,-4000,3500,0);
+bx(28000,16000,200,M.roof,2000,-4000,7000,0);
+bx(18000,6000,200,M.deck,-2000,13000,1200,0);
+bx(3000,200,15000,M.road,12000,-2000,50,0);
+// Villa structure
+bx(18000,12000,4000,M.wall,0,0,2000,0);
+bx(16000,10000,3500,M.wall,0,2000,4000,0);
+bx(18000,12000,200,M.roof,0,4000,4200,0);
+bx(4000,4000,4000,M.wall,9000,0,5000,0);
+bx(5000,5000,300,M.roof,9000,3000,5200,0);
+bx(8000,6000,3000,M.wall,-8000,0,1500,0);
+bx(8000,6000,200,M.roof,-8000,2500,1600,0);
+bx(6000,4000,2000,M.wall,0,-6000,1000,0);
+bx(7000,5000,200,M.roof,0,-5000,1200,0);
+// Columns
+const cp=[[-6500,-3500],[6500,-3500],[-6500,3500],[6500,3500],[-3500,-4500],[3500,-4500],[-3500,4500],[3500,4500],[-8500,-2000],[8500,-2000],[-8500,2000],[8500,2000],[-5000,0],[5000,0],[0,-5000],[0,5000],[9500,0],[0,0]];
+cp.forEach(p=>cy(130,130,3500,M.col,p[0],p[1],2100,0));
+const cp2=[[-4000,-3000],[4000,-3000],[-4000,3000],[4000,3000],[-2000,-4000],[2000,-4000],[-2000,4000],[2000,4000]];
+cp2.forEach(p=>cy(100,100,2000,M.col,p[0],p[1]+2000,4050,0));
+// Glass
+for(let x=-8000;x<=8000;x+=2000){bx(1600,50,2800,M.frame,x,0,2150,1);bx(1500,50,2700,M.glass,x,0,2200,1)}
+for(let x=-7000;x<=7000;x+=2000){bx(1600,50,2400,M.frame,x,2000,4100,1);bx(1500,50,2300,M.glass,x,2000,4150,1)}
+// Pool
+bx(7000,4500,300,M.pool,0,-2000,3000,2);
+bx(6500,4000,200,M.water,0,-2000,3200,2);
+bx(10000,800,200,M.deck,0,-4500,1200,2);
+// Stairs
+for(let i=0;i<20;i++){bx(3000,300,150,M.stairs,-2000,2000+i*300+i*150,4100-i*150,0)}
+for(let i=0;i<12;i++){bx(1200,200,100,M.stairs,8500,-3500+i*300,5500-i*100,0)}
+// Interior
+bx(2000,800,800,M.wood,-3000,0,2200,3);bx(2000,800,800,M.wood,3000,0,2200,3);
+bx(3000,300,1500,M.dark,0,0,2200,3);
+bx(4000,300,2000,M.wood,2000,3800,3200,3);
+bx(5000,1200,2500,M.dark,-3000,3800,3200,3);
+bx(1000,500,1000,M.wood,6000,500,3200,3);
+for(let x=-5000;x<=5000;x+=4000){for(let z=-2000;z<=2000;z+=4000){sp(80,M.light,x,3800,z,3)}}
+// Railings
+[-8500,8500].forEach(px=>{for(let i=-6;i<=6;i++){const pz=i*1200;cy(15,15,200,M.rail,px,pz,1200,0)}});
+[-6500,6500].forEach(pz=>{for(let i=-8;i<=8;i++){const px=i*1000;cy(15,15,200,M.rail,px,pz,1200,0)}});
+// Trees
+function tr(x,z,s){s=s||1;cy(60*s,80*s,400*s,M.tt,x,z,200+200*s,4);sp(300*s,M.tc,x,z,600*s+200*s,4);sp(250*s,M.tc,x,z,800*s+200*s,4);sp(200*s,M.tc,x,z,1000*s+200*s,4)}
+const tp=[[-14000,-12000,1.2],[-12000,-15000,1],[-16000,-10000,0.9],[15000,-10000,1.1],[13000,-13000,1.3],[17000,-8000,0.8],[-15000,12000,1],[-13000,15000,1.2],[-17000,10000,0.9],[15000,12000,1.1],[13000,15000,1],[17000,10000,0.8],[-10000,-17000,1.2],[10000,-17000,1],[-8000,-18000,0.9],[8000,-18000,1.1],[0,-19000,1.3],[-18000,-5000,0.8],[-18000,5000,1],[18000,-5000,1.2],[18000,5000,0.9],[-5000,-15000,1.1],[5000,-15000,1]];
+tp.forEach(p=>tr(p[0],p[1],p[2]));
+// Bushes
+for(let i=0;i<40;i++){const x=(Math.random()-0.5)*90000,z=(Math.random()-0.5)*75000;if(Math.abs(x)<20000&&Math.abs(z)<20000)continue;sp(100+Math.random()*150,M.tc,x,z,50,4)}
+// Car
+bx(4500,1800,700,M.car,7000,-14000,350,3);
+bx(2500,1500,300,M.cg,7800,-13500,700,3);
+[[-1400,-600],[1400,-600],[-1400,600],[1400,600]].forEach(([wx,wz])=>{cy(180,180,120,new T.MeshStandardMaterial({color:0x111111,roughness:0.9}),7000+wx,-14000+wz,0,3);cy(80,80,125,new T.MeshStandardMaterial({color:0x555555,roughness:0.5,metalness:0.3}),7000+wx,-14000+wz,0,3)});
+// Light poles
+[[-10000,-8000],[10000,-8000],[-10000,8000],[10000,8000]].forEach(p=>{cy(40,50,800,M.col,p[0],p[1],400,0);sp(80,M.light,p[0],p[1],1280,0);const pl=new T.PointLight(0xffdd88,0.4,8000);pl.position.set(p[0],900,p[1]);scene.add(pl)});
+// Grid
+const grid=new T.GridHelper(100000,50,0x334466,0x223355);grid.position.y=10;scene.add(grid);
+// Stars
+function mkStars(c,sp,sz,op){const g=new T.BufferGeometry();const p=new Float32Array(c*3);const s=new Float32Array(c);for(let i=0;i<c;i++){p[i*3]=(Math.random()-0.5)*sp;p[i*3+1]=20000+Math.random()*80000;p[i*3+2]=(Math.random()-0.5)*sp;s[i]=0.5+Math.random()*1.5}g.setAttribute("position",new T.BufferAttribute(p,3));g.setAttribute("size",new T.BufferAttribute(s,1));const m=new T.PointsMaterial({color:0xffffff,size:sz,transparent:true,opacity:op,sizeAttenuation:true});return new T.Points(g,m)}
+const s1=mkStars(2500,500000,2.5,0.7);scene.add(s1);
+const s2=mkStars(800,300000,1.5,0.3);scene.add(s2);
+// Moon
+const moon=new T.Mesh(new T.SphereGeometry(1400,32,24),new T.MeshStandardMaterial({color:0xeee8d5,roughness:0.8,metalness:0,emissive:0xccc8b0,emissiveIntensity:0.2}));moon.position.set(50000,55000,-80000);scene.add(moon);
+const moonG=new T.Mesh(new T.SphereGeometry(2000,24,16),new T.MeshBasicMaterial({color:0x8888cc,transparent:true,opacity:0.06}));moonG.position.copy(moon.position);scene.add(moonG);
+// Ocean
+const oSeg=180;const oGeo=new T.PlaneGeometry(300000,300000,oSeg,oSeg);
+const oMat=new T.MeshPhysicalMaterial({color:0x0a2a4a,roughness:0.05,metalness:0,transparent:true,opacity:0.6,ior:1.33,envMapIntensity:0.6,side:T.DoubleSide});
+const ocean=new T.Mesh(oGeo,oMat);ocean.rotation.x=-Math.PI/2;ocean.position.set(0,-200,-80000);a(ocean,2);
+const oPos=ocean.geometry.attributes.position.array;const oOY=new Float32Array(oPos.length/3);
+for(let i=0;i<oPos.length;i+=3){oOY[i/3]=oPos[i+1]}
+// Rain
+const rC=8000;const rGeo=new T.BufferGeometry();const rPos=new Float32Array(rC*3);const rVel=new Float32Array(rC);
+for(let i=0;i<rC;i++){rPos[i*3]=(Math.random()-0.5)*200000;rPos[i*3+1]=Math.random()*40000;rPos[i*3+2]=(Math.random()-0.5)*200000;rVel[i]=60+Math.random()*40}
+rGeo.setAttribute("position",new T.BufferAttribute(rPos,3));
+const rMat=new T.PointsMaterial({color:0x8899bb,size:4,transparent:true,opacity:0.3,sizeAttenuation:true});
+const rain=new T.Points(rGeo,rMat);rain.visible=false;scene.add(rain);
+
+// Interaction
+const rc=new T.Raycaster(),pt=new T.Vector2();
+const oi={};
+[M.wall,M.wallD].forEach(mt=>oi[mt.id]=["Concrete Wall","RC 300mm · Insulated"]);
+M.glass&&(oi[M.glass.id]=["Curtain Wall","Low-E · Insulated glass"]);
+M.water&&(oi[M.water.id]=["Infinity Pool","9x5m · Heated · LED"]);
+M.car&&(oi[M.car.id]=["Sports Car","Red · 4.5m length"]);
+M.tc&&(oi[M.tc.id]=["Cypress","Height 4-7m"]);
+M.wood&&(oi[M.wood.id]=["Oak Furniture","Custom designed 2024"]);
+M.col&&(oi[M.col.id]=["Column","RC 240mm diameter"]);
+M.roof&&(oi[M.roof.id]=["Roof Slab","RC 200mm"]);
+M.deck&&(oi[M.deck.id]=["Deck","IP hardwood"]);
+M.light&&(oi[M.light.id]=["Light Fixture","LED 3000K"]);
+M.rail&&(oi[M.rail.id]=["Railing","Stainless steel"]);
+
+renderer.domElement.addEventListener("pointermove",e=>{pt.x=(e.clientX/cw.clientWidth)*2-1;pt.y=-(e.clientY/cw.clientHeight)*2+1});
+renderer.domElement.addEventListener("click",()=>{rc.setFromCamera(pt,camera);const hits=rc.intersectObjects(scene.children,true);for(const hit of hits){const o=hit.object;const mt=o.material;if(mt&&oi[mt.id]){const info=oi[mt.id];document.getElementById("info").innerHTML='<span class=\"nm\">'+info[0]+'</span><div class=\"ds\">'+info[1]+'</div>';return}}document.getElementById("info").innerHTML='<span class=\"nm\">CLIFF VILLA</span><div class=\"ds\">Drag · Scroll · Click objects</div>'});
+
+// Layer toggle
+document.querySelectorAll(".sb").forEach(btn=>{btn.addEventListener("click",()=>{const l=parseInt(btn.dataset.l);const anyVis=L[l].some(m=>m.visible);const newVis=!anyVis;L[l].forEach(m=>m.visible=newVis);btn.classList.toggle("on",newVis);btn.classList.toggle("off",!newVis)})});
+
+// Controls
+document.getElementById("bRot").addEventListener("click",()=>{controls.autoRotate=!controls.autoRotate;document.getElementById("bRot").classList.toggle("on")});
+let raining=false;
+document.getElementById("bRain").addEventListener("click",()=>{raining=!raining;rain.visible=raining;document.getElementById("bRain").classList.toggle("on")});
+let nightMode=false;
+document.getElementById("bNight").addEventListener("click",()=>{nightMode=!nightMode;document.getElementById("bNight").classList.toggle("on");if(nightMode){scene.background=new T.Color(0x050510);scene.fog=new T.FogExp2(0x050510,0.000005);sl.intensity=0.1;al.intensity=0.15;hl.intensity=0.2;bloom.strength=0.7;wl1.intensity=2.0;wl2.intensity=1.5;wl3.intensity=1.2}else{scene.background=new T.Color(0x080b16);scene.fog=new T.FogExp2(0x080b16,0.0000035);sl.intensity=2.0;al.intensity=0.5;hl.intensity=0.6;bloom.strength=0.4;wl1.intensity=0.8;wl2.intensity=0.6;wl3.intensity=0.4}});
+document.getElementById("bSnap").addEventListener("click",()=>{composer.render();const a=document.createElement("a");a.href=renderer.domElement.toDataURL("image/png");a.download="cliff_villa_ultra.png";a.click()});
+let flying=false;let flyTime=0;
+document.getElementById("bFly").addEventListener("click",()=>{flying=!flying;flyTime=0;document.getElementById("bFly").classList.toggle("on");controls.autoRotate=false;document.getElementById("bRot").classList.remove("on")});
+const ts=document.getElementById("timeSlider");
+ts.addEventListener("input",()=>{const v=parseInt(ts.value);document.getElementById("timeLabel").textContent=String(Math.floor(v*0.24)).padStart(2,"0")+":"+String((v*0.24%1)*60|0).padStart(2,"0")});
+
+window.addEventListener("resize",()=>{const w=cw.clientWidth,h=cw.clientHeight;camera.aspect=w/h;camera.updateProjectionMatrix();renderer.setSize(w,h);composer.setSize(w,h)});
+document.getElementById("objCount").textContent=scene.children.length;
+
+// Animation
+let t=0;let fc=0;let lft=0;
+function anim(time){requestAnimationFrame(anim);t+=0.012;
+  fc++;if(time-lft>1000){document.getElementById("fps").textContent=fc;fc=0;lft=time}
+  // Ocean waves
+  const pos=ocean.geometry.attributes.position.array;
+  for(let i=0;i<pos.length;i+=3){const idx=i/3;pos[i+1]=oOY[idx]+Math.sin(t*0.8+pos[i]*0.002+pos[i+2]*0.0015)*120+Math.sin(t*1.2+pos[i]*0.003)*60}
+  ocean.geometry.attributes.position.needsUpdate=true;
+  // Rain
+  if(raining){const rp=rain.geometry.attributes.position.array;for(let i=0;i<rC;i++){rp[i*3+1]-=rVel[i]*0.03;if(rp[i*3+1]<0){rp[i*3+1]=40000;rp[i*3]=(Math.random()-0.5)*200000;rp[i*3+2]=(Math.random()-0.5)*200000}}rain.geometry.attributes.position.needsUpdate=true}
+  // Stars
+  const sA=s1.geometry.attributes.size.array;for(let i=0;i<sA.length;i++)sA[i]=0.5+Math.sin(t*0.3+i*0.01)*1+1;s1.geometry.attributes.size.needsUpdate=true;
+  moon.scale.setScalar(1+Math.sin(t*0.2)*0.02);moonG.scale.setScalar(1+Math.sin(t*0.15)*0.05);
+  // Fly
+  if(flying){flyTime+=0.005;const radius=60000;const height=15000+Math.sin(flyTime*0.3)*8000;camera.position.x=Math.sin(flyTime)*radius;camera.position.z=Math.cos(flyTime)*radius;camera.position.y=height;controls.target.set(0,6000,0);controls.update()}
+  controls.update();composer.render()}
+anim(0);
+setTimeout(()=>document.getElementById("ld").classList.add("h"),500);
+console.log("Villa ULTRA: "+scene.children.length+" objects");
+</script>
+</body>
+</html>"""
+
+with open(out_path, "w", encoding="utf-8") as f:
+    f.write(HTML)
+
+size = os.path.getsize(out_path)
+print(f"Written {size} bytes to cliff_villa_ultra.html")
