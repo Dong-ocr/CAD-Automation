@@ -1,0 +1,39 @@
+﻿name: CAD CI
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install ezdxf matplotlib
+    - name: Validate Python syntax
+      run: |
+        python -m py_compile src/interior_models.py
+        python -m py_compile src/interior_dxf.py
+        echo "All Python files validated"
+    - name: Check HTML pages
+      run: |
+        for f in web/*.html; do
+          if grep -q "DOCTYPE" "$f" 2>/dev/null; then
+            echo "OK: $f"
+          fi
+        done
+    - name: Build artifact list
+      run: |
+        echo "## Build Summary" >> $GITHUB_STEP_SUMMARY
+        echo "- Python source: $(find src -name '*.py' | wc -l) files" >> $GITHUB_STEP_SUMMARY
+        echo "- Web pages: $(find web -name '*.html' | wc -l) files" >> $GITHUB_STEP_SUMMARY
+        echo "- Scripts: $(find scripts -name '*.py' | wc -l) files" >> $GITHUB_STEP_SUMMARY

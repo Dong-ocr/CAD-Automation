@@ -146,6 +146,15 @@ function sp(r,mt,x,y,z,l){const g=new T.SphereGeometry(r,16,12);const m=new T.Me
 const tg=new T.PlaneGeometry(140000,120000);
 const tmm=new T.Mesh(tg,M.ground);tmm.position.set(0,-30,0);tmm.rotation.x=-Math.PI/2;tmm.receiveShadow=true;a(tmm,0);
 for(let i=0;i<60;i++){const x=(Math.random()-0.5)*90000,z=(Math.random()-0.5)*75000;const g2=new T.PlaneGeometry(2000+Math.random()*6000,2000+Math.random()*6000);const m2=new T.Mesh(g2,i%3===0?M.ground:M.groundD);m2.position.set(x,-28,z);m2.rotation.x=-Math.PI/2;m2.rotation.z=Math.random()*0.1;a(m2,4)}
+// Rock formations
+function rock(x,z,s,mt){const g=new T.DodecahedronGeometry(s*200);const m=new T.Mesh(g,mt||new T.MeshStandardMaterial({color:0x5a5a5a,roughness:0.8,metalness:0.1}));m.position.set(x,100,z);m.rotation.set(Math.random()*2,Math.random()*2,Math.random()*2);m.scale.set(1,0.5+Math.random()*0.3,0.7+Math.random()*0.3);m.castShadow=true;m.receiveShadow=true;a(m,4)}
+const rockMat=new T.MeshStandardMaterial({color:0x6a6a6a,roughness:0.9,metalness:0.05});
+[[-22000,8000],[-25000,-5000],[22000,9000],[25000,-8000],[-28000,-15000],[28000,15000],[-30000,5000],[30000,-5000],[-15000,22000],[15000,-22000],[-20000,-25000],[20000,25000],[-25000,20000],[0,25000]].forEach(p=>rock(p[0],p[1],0.3+Math.random()*0.7,rockMat));
+// Extra small rocks
+for(let i=0;i<30;i++){const x=(Math.random()-0.5)*60000,z=(Math.random()-0.5)*50000;if(Math.abs(x)<20000&&Math.abs(z)<20000)continue;rock(x,z,0.1+Math.random()*0.2,rockMat)}
+// Pool loungers
+[[800,3500],[-800,3500],[800,4500],[-800,4500],[400,4000],[-400,4000]].forEach(p=>{bx(300,150,800,M.wood,p[0],-2000,p[2],3);bx(300,80,80,M.wood,p[0],-2000,p[2]+400,3);bx(300,80,80,M.wood,p[0],-2000,p[2]-400,3)});
+
 
 // Main plateau
 bx(42000,34000,400,M.slab,0,200,0,0);
@@ -211,6 +220,16 @@ const s2=mkStars(800,300000,1.5,0.3);scene.add(s2);
 // Moon
 const moon=new T.Mesh(new T.SphereGeometry(1400,32,24),new T.MeshStandardMaterial({color:0xeee8d5,roughness:0.8,metalness:0,emissive:0xccc8b0,emissiveIntensity:0.2}));moon.position.set(50000,55000,-80000);scene.add(moon);
 const moonG=new T.Mesh(new T.SphereGeometry(2000,24,16),new T.MeshBasicMaterial({color:0x8888cc,transparent:true,opacity:0.06}));moonG.position.copy(moon.position);scene.add(moonG);
+// Fireflies
+const ffCount=200;const ffGeo=new T.BufferGeometry();const ffPos=new Float32Array(ffCount*3);const ffSiz=new Float32Array(ffCount);const ffPhz=new Float32Array(ffCount);
+for(let i=0;i<ffCount;i++){ffPos[i*3]=(Math.random()-0.5)*40000;ffPos[i*3+1]=200+Math.random()*3500;ffPos[i*3+2]=(Math.random()-0.5)*30000;ffSiz[i]=2+Math.random()*3;ffPhz[i]=Math.random()*6.28}
+ffGeo.setAttribute("position",new T.BufferAttribute(ffPos,3));ffGeo.setAttribute("size",new T.BufferAttribute(ffSiz,1));
+const ffMat=new T.PointsMaterial({color:0xffdd44,size:5,transparent:true,opacity:0.7,sizeAttenuation:true,blending:T.AdditiveBlending,depthWrite:false});
+const fireflies=new T.Points(ffGeo,ffMat);scene.add(fireflies);
+// Firefly animation data
+const ffData={pos:ffPos,siz:ffSiz,phz:ffPhz,count:ffCount,vel:new Float32Array(ffCount)};
+for(let i=0;i<ffCount;i++){ffData.vel[i]=0.2+Math.random()*0.5}
+
 // Ocean
 const oSeg=180;const oGeo=new T.PlaneGeometry(300000,300000,oSeg,oSeg);
 const oMat=new T.MeshPhysicalMaterial({color:0x0a2a4a,roughness:0.05,metalness:0,transparent:true,opacity:0.6,ior:1.33,envMapIntensity:0.6,side:T.DoubleSide});
@@ -273,6 +292,9 @@ function anim(time){requestAnimationFrame(anim);t+=0.012;
   // Stars
   const sA=s1.geometry.attributes.size.array;for(let i=0;i<sA.length;i++)sA[i]=0.5+Math.sin(t*0.3+i*0.01)*1+1;s1.geometry.attributes.size.needsUpdate=true;
   moon.scale.setScalar(1+Math.sin(t*0.2)*0.02);moonG.scale.setScalar(1+Math.sin(t*0.15)*0.05);
+  // Fireflies
+  const ffd=ffData;for(let i=0;i<ffd.count;i++){ffd.pos[i*3+1]+=Math.sin(t+ffd.phz[i])*ffd.vel[i]*0.5;ffd.pos[i*3]+=Math.cos(t*0.7+ffd.phz[i]*1.3)*ffd.vel[i]*0.3;ffd.pos[i*3+2]+=Math.sin(t*0.5+ffd.phz[i]*2.1)*ffd.vel[i]*0.3}fireflies.geometry.attributes.position.needsUpdate=true;
+
   // Fly
   if(flying){flyTime+=0.005;const radius=60000;const height=15000+Math.sin(flyTime*0.3)*8000;camera.position.x=Math.sin(flyTime)*radius;camera.position.z=Math.cos(flyTime)*radius;camera.position.y=height;controls.target.set(0,6000,0);controls.update()}
   controls.update();composer.render()}
