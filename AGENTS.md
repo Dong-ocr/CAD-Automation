@@ -65,3 +65,30 @@ stop_cad.bat      — 停止服务器
 - IP: 118.24.164.12
 - SSH: ssh -i "C:\Users\王东浩\.ssh\id_ed25519" ubuntu@118.24.164.12
 - 待部署
+
+
+## 🏭 产品化：水工CAD生成器
+
+### 产品页面
+- `web/hydro_generator.html` — 参数选型 → 出图 → 下单
+- `scripts/hydro_api_server.py` — API后端生成服务 (端口 :8766)
+- `output/orders/` — 客户订单输出目录
+
+### API接口
+| 接口 | 方法 | 说明 |
+|------|------|------|
+| `/api/generate` | POST | 生成全套水电站CAD图纸 |
+| `/api/preview` | POST | 生成SVG预览图 |
+| `/status` | GET | 服务器状态 |
+
+### 定价策略
+- 基础费 ¥199 + 每张图纸 ¥99
+- 全套4张图纸 ¥595
+- 定制修改另议
+
+### 技术栈
+- CAD引擎: `HydroProjectV8` + `ezdxf 1.4.4`
+- 前端: HTML + CSS + Three.js
+- API: Python http.server
+- 格式: DXF (AutoCAD 2010)
+- 标准: 国标 SL73 图层体系

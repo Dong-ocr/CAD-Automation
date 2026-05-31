@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>水工CAD生成器 — 在线出图</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a12;color:#e0e0e0;font-family:Inter,'Microsoft YaHei',system-ui,sans-serif;min-height:100vh}
+body.no-scroll{overflow:hidden}
+/* Header */
+#header{background:linear-gradient(135deg,#0d0d1a 0%,#151530 100%);border-bottom:1px solid rgba(255,255,255,0.06);padding:16px 40px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;backdrop-filter:blur(12px)}
+#header .logo{font-size:18px;font-weight:800;background:linear-gradient(135deg,#60a5fa,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+#header .logo span{-webkit-text-fill-color:rgba(255,255,255,0.3);font-weight:400}
+#header .price{font-size:13px;color:rgba(255,255,255,0.5)}
+#header .price b{color:#60a5fa;font-size:18px}
+/* Hero */
+#hero{padding:60px 40px 40px;text-align:center;background:radial-gradient(ellipse at center top,rgba(96,165,250,0.06),transparent 60%)}
+#hero h1{font-size:36px;font-weight:800;letter-spacing:-1px;margin-bottom:12px}
+#hero h1 span{background:linear-gradient(135deg,#60a5fa,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+#hero p{color:rgba(255,255,255,0.4);font-size:14px;max-width:600px;margin:0 auto 8px;line-height:1.6}
+#hero .badges{display:flex;gap:8px;justify-content:center;margin-top:16px;flex-wrap:wrap}
+.badge{display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:20px;font-size:11px;background:rgba(96,165,250,0.08);border:1px solid rgba(96,165,250,0.12);color:rgba(255,255,255,0.5)}
+.badge b{color:#60a5fa}
+/* Main layout */
+#main{display:grid;grid-template-columns:360px 1fr;gap:0;max-width:1400px;margin:0 auto;padding:20px}
+/* Sidebar */
+#sidebar{padding:20px;background:rgba(255,255,255,0.02);border-radius:12px;border:1px solid rgba(255,255,255,0.06);height:fit-content;position:sticky;top:80px}
+.section-title{font-size:13px;font-weight:700;color:rgba(255,255,255,0.6);margin-bottom:12px;letter-spacing:2px;text-transform:uppercase}
+.form-group{margin-bottom:16px}
+.form-group label{display:block;font-size:11px;color:rgba(255,255,255,0.4);margin-bottom:4px;font-weight:500;letter-spacing:0.5px}
+.form-group input,.form-group select{width:100%;padding:9px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.04);color:#e0e0e0;font-size:13px;outline:none;transition:all .2s}
+.form-group input:focus,.form-group select:focus{border-color:rgba(96,165,250,0.3);background:rgba(96,165,250,0.04);box-shadow:0 0 20px rgba(96,165,250,0.05)}
+.form-group select option{background:#1a1a2e;color:#e0e0e0}
+.form-group .hint{font-size:10px;color:rgba(255,255,255,0.2);margin-top:3px}
+/* Drawing checklist */
+.check-group{display:flex;flex-direction:column;gap:6px;margin-bottom:16px}
+.check-item{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:8px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.05);cursor:pointer;transition:all .2s}
+.check-item:hover{background:rgba(96,165,250,0.05)}
+.check-item input[type=checkbox]{accent-color:#60a5fa;width:15px;height:15px;cursor:pointer}
+.check-item .info{flex:1}
+.check-item .name{font-size:13px;font-weight:600;color:rgba(255,255,255,0.7)}
+.check-item .desc{font-size:10px;color:rgba(255,255,255,0.3)}
+.check-item .tag{font-size:9px;padding:2px 8px;border-radius:10px;background:rgba(96,165,250,0.1);color:#60a5fa}
+/* Price summary */
+#priceBox{margin-top:16px;padding:16px;border-radius:10px;background:linear-gradient(135deg,rgba(96,165,250,0.06),rgba(167,139,250,0.06));border:1px solid rgba(96,165,250,0.1)}
+#priceBox .row{display:flex;justify-content:space-between;font-size:13px;padding:3px 0}
+#priceBox .row .label{color:rgba(255,255,255,0.4)}
+#priceBox .row .val{color:#e0e0e0}
+#priceBox .total{border-top:1px solid rgba(255,255,255,0.08);margin-top:6px;padding-top:6px;font-size:15px;font-weight:700}
+#priceBox .total .val{color:#60a5fa;font-size:20px}
+/* Action buttons */
+#actions{display:flex;flex-direction:column;gap:8px;margin-top:16px}
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;padding:12px;border-radius:10px;border:none;cursor:pointer;font-size:14px;font-weight:600;transition:all .25s;text-decoration:none}
+.btn-primary{background:linear-gradient(135deg,#60a5fa,#3b82f6);color:#fff}
+.btn-primary:hover{transform:translateY(-1px);box-shadow:0 8px 30px rgba(96,165,250,0.25)}
+.btn-secondary{background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.6);border:1px solid rgba(255,255,255,0.08)}
+.btn-secondary:hover{background:rgba(255,255,255,0.1);color:#fff}
+/* Preview area */
+#preview{position:relative;border-radius:12px;overflow:hidden;background:#080b16;border:1px solid rgba(255,255,255,0.06);height:calc(100vh - 120px);min-height:500px}
+#preview iframe{width:100%;height:100%;border:none}
+#preview-overlay{position:absolute;top:12px;left:12px;right:12px;display:flex;gap:6px;z-index:10}
+#preview-overlay .tab{padding:6px 14px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;background:rgba(0,0,0,0.6);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,0.06);color:rgba(255,255,255,0.4);transition:all .2s}
+#preview-overlay .tab.active{background:rgba(96,165,250,0.15);border-color:rgba(96,165,250,0.2);color:#60a5fa}
+/* Modal */
+#modal{position:fixed;top:0;left:0;right:0;bottom:0;z-index:200;background:rgba(0,0,0,0.7);backdrop-filter:blur(8px);display:none;align-items:center;justify-content:center}
+#modal.show{display:flex}
+#modal-box{background:#1a1a2e;border-radius:16px;padding:32px;max-width:420px;width:90%;border:1px solid rgba(255,255,255,0.08);text-align:center}
+#modal-box h2{font-size:20px;margin-bottom:8px}
+#modal-box p{color:rgba(255,255,255,0.5);font-size:13px;line-height:1.6;margin-bottom:20px}
+#modal-box .qr-box{background:rgba(255,255,255,0.03);border-radius:12px;padding:20px;margin-bottom:16px;border:1px solid rgba(255,255,255,0.06)}
+#modal-box .qr-box .big-price{font-size:42px;font-weight:800;color:#60a5fa}
+#modal-box .qr-box .sub{font-size:11px;color:rgba(255,255,255,0.3);margin-top:4px}
+#modal-box .btn-close{background:rgba(255,255,255,0.06);border:none;color:rgba(255,255,255,0.4);padding:10px 24px;border-radius:8px;cursor:pointer;font-size:13px}
+/* Footer */
+#footer{padding:30px 40px;text-align:center;color:rgba(255,255,255,0.15);font-size:11px;border-top:1px solid rgba(255,255,255,0.04)}
+#footer a{color:rgba(255,255,255,0.25);text-decoration:none}
+#footer a:hover{color:rgba(255,255,255,0.5)}
+/* Responsive */
+@media(max-width:900px){#main{grid-template-columns:1fr}#sidebar{position:static}#preview{height:60vh}}
+</style>
+</head>
+<body>
+<div id="header">
+  <div class="logo">水工CAD <span>Generator</span></div>
+  <div class="price">每套图纸 <b>¥299</b> 起</div>
+</div>
+
+<div id="hero">
+  <h1><span>水工CAD</span> 在线生成器</h1>
+  <p>输入参数 → 自动生成国标水电站施工图（DXF格式）<br>剖面图 · 发电机层 · 水轮机层 · 蜗壳层 · 一键下载</p>
+  <div class="badges">
+    <span class="badge">⚡ 国标 <b>SL73</b></span>
+    <span class="badge">📐 <b>DXF</b> 格式</span>
+    <span class="badge">🔄 支持 <b>AutoCAD</b></span>
+    <span class="badge">🏭 水电站 <b>专业版</b></span>
+  </div>
+</div>
+
+<div id="main">
+  <!-- Sidebar: Parameters -->
+  <div id="sidebar">
+    <div class="section-title">项目参数</div>
+
+    <div class="form-group">
+      <label>项目名称</label>
+      <input type="text" id="projName" value="岩泊渡水电站" placeholder="输入项目名称">
+    </div>
+
+    <div class="form-group">
+      <label>厂房尺寸</label>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div><input type="number" id="plantW" value="18000" placeholder="宽度(mm)"><div class="hint">宽度</div></div>
+        <div><input type="number" id="plantH" value="42000" placeholder="长度(mm)"><div class="hint">长度</div></div>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>机组数量</label>
+      <select id="unitCount">
+        <option value="2">2 台机组</option>
+        <option value="3" selected>3 台机组</option>
+        <option value="4">4 台机组</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label>图纸比例</label>
+      <select id="scale">
+        <option value="100">1:100</option>
+        <option value="150" selected>1:150</option>
+        <option value="200">1:200</option>
+      </select>
+    </div>
+
+    <div class="section-title" style="margin-top:20px">选择图纸</div>
+    <div class="check-group">
+      <label class="check-item"><input type="checkbox" checked><div class="info"><div class="name">剖面图</div><div class="desc">厂房横剖面 · 结构+尺寸</div></div><span class="tag">+¥99</span></label>
+      <label class="check-item"><input type="checkbox" checked><div class="info"><div class="name">发电机层平面图</div><div class="desc">发电机层 · 立柱+轴线+尺寸</div></div><span class="tag">+¥99</span></label>
+      <label class="check-item"><input type="checkbox" checked><div class="info"><div class="name">水轮机层平面图</div><div class="desc">水轮机层 · 结构+填充</div></div><span class="tag">+¥99</span></label>
+      <label class="check-item"><input type="checkbox" checked><div class="info"><div class="name">蜗壳层平面图</div><div class="desc">蜗壳层 · 蜗壳线+结构</div></div><span class="tag">+¥99</span></label>
+    </div>
+
+    <div id="priceBox">
+      <div class="row"><span class="label">基础费用</span><span class="val">¥199</span></div>
+      <div class="row"><span class="label">图纸 × 4</span><span class="val">¥396</span></div>
+      <div class="row total"><span class="label">总计</span><span class="val" id="totalPrice">¥595</span></div>
+    </div>
+
+    <div id="actions">
+      <button class="btn btn-primary" id="btnOrder">📋 下单定制</button>
+      <button class="btn btn-secondary" id="btnPreview">👁 预览3D</button>
+    </div>
+  </div>
+
+  <!-- Preview -->
+  <div id="preview">
+    <div id="preview-overlay">
+      <div class="tab active" data-view="3d">3D 预览</div>
+      <div class="tab" data-view="dxf">DXF 图纸</div>
+    </div>
+    <iframe id="previewFrame" src="cliff_villa_ultra.html" loading="lazy"></iframe>
+  </div>
+</div>
+
+<!-- Order Modal -->
+<div id="modal">
+  <div id="modal-box">
+    <h2>📋 下单成功</h2>
+    <p>您的图纸订单已提交<br>我们将在 <b>24小时</b> 内完成并发送至您的邮箱</p>
+    <div class="qr-box">
+      <div class="big-price" id="modalPrice">¥595</div>
+      <div class="sub">支持支付宝 / 微信支付</div>
+    </div>
+    <p style="font-size:12px;color:rgba(255,255,255,0.3)">或联系微信：<b>CAD_Automation</b></p>
+    <button class="btn-close" onclick="document.getElementById('modal').classList.remove('show')">关闭</button>
+  </div>
+</div>
+
+<div id="footer">
+  <a href="https://github.com/Dong-ocr/CAD-Automation" target="_blank">GitHub</a> · 由 CAD Automation Engine 驱动 · © 2026
+</div>
+
+<script>
+// Price calculation
+const basePrice = 199;
+const perDrawing = 99;
+function updatePrice() {
+  const checked = document.querySelectorAll('.check-item input:checked').length;
+  const total = basePrice + checked * perDrawing;
+  document.getElementById('totalPrice').textContent = '¥' + total;
+  document.getElementById('modalPrice').textContent = '¥' + total;
+}
+document.querySelectorAll('.check-item input').forEach(cb => cb.addEventListener('change', updatePrice));
+
+// Order button
+document.getElementById('btnOrder').addEventListener('click', () => {
+  const name = document.getElementById('projName').value || '未命名项目';
+  const checked = document.querySelectorAll('.check-item input:checked');
+  if (checked.length === 0) { alert('请至少选择一张图纸'); return; }
+  document.getElementById('modal').classList.add('show');
+  document.body.classList.add('no-scroll');
+});
+
+// Close modal on overlay click
+document.getElementById('modal').addEventListener('click', (e) => {
+  if (e.target === document.getElementById('modal')) {
+    document.getElementById('modal').classList.remove('show');
+    document.body.classList.remove('no-scroll');
+  }
+});
+
+// Preview tabs
+document.querySelectorAll('#preview-overlay .tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('#preview-overlay .tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    const view = tab.dataset.view;
+    if (view === '3d') {
+      document.getElementById('previewFrame').src = 'cliff_villa_ultra.html';
+    } else {
+      // Show DXF preview - could be SVG render
+      document.getElementById('previewFrame').src = 'about:blank';
+      setTimeout(() => {
+        document.getElementById('previewFrame').src = '../output/test_render.svg';
+      }, 100);
+    }
+  });
+});
+</script>
+</body>
+</html>
